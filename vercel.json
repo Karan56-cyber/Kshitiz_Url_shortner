@@ -1,14 +1,14 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build:web",
   "outputDirectory": "public",
   "cleanUrls": false,
   "rewrites": [
-    { "source": "/auth/(.*)",        "destination": "https://linkpulse-api.onrender.com/auth/$1" },
-    { "source": "/workspaces/(.*)",  "destination": "https://linkpulse-api.onrender.com/workspaces/$1" },
-    { "source": "/health/(.*)",      "destination": "https://linkpulse-api.onrender.com/health/$1" },
+    { "source": "/auth/(.*)", "destination": "https://linkpulse-api.onrender.com/auth/$1" },
+    { "source": "/workspaces/(.*)", "destination": "https://linkpulse-api.onrender.com/workspaces/$1" },
+    { "source": "/health/(.*)", "destination": "https://linkpulse-api.onrender.com/health/$1" },
     { "source": "/:alias([a-zA-Z0-9_-]{4,})", "destination": "https://linkpulse-api.onrender.com/:alias" }
   ]
 }

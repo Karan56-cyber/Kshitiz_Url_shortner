@@ -22,6 +22,13 @@ function log(
 
 async function startWorker(): Promise<void> {
   const environment = loadEnvironment();
+  if (environment.DEMO_MODE) {
+    console.warn("The click worker is not used in local demo mode");
+    return;
+  }
+  if (!environment.DATABASE_URL || !environment.REDIS_URL) {
+    throw new Error("DATABASE_URL and REDIS_URL are required outside demo mode");
+  }
   const prisma = createPrismaClient(environment.DATABASE_URL);
   const redis = new Redis(environment.REDIS_URL, {
     lazyConnect: true,

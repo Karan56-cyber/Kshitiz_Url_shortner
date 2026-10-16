@@ -23,6 +23,8 @@ export interface AppOptions {
     jwtSecret: string;
     redis?: Redis;
   };
+  demoMode?: boolean;
+  isDevelopment?: boolean;
   analytics?: {
     repository: AnalyticsRepository;
     authRepository: AuthRepository;
@@ -53,6 +55,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         },
   });
   const database = options.database;
+  const isDevelopment = options.isDevelopment ?? process.env.NODE_ENV !== "production";
 
   app.register(cors, {
     origin: true,
@@ -61,12 +64,14 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   });
 
   app.register(helmet, {
+    ...(isDevelopment ? { hsts: false } : {}),
     contentSecurityPolicy: {
       directives: {
         "script-src": ["'self'", "'wasm-unsafe-eval'"],
         "connect-src": ["'self'", "*"],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
+        "upgrade-insecure-requests": isDevelopment ? null : [],
       },
     },
   });
@@ -81,7 +86,10 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     registerAnalyticsRoutes(app, options.analytics);
   }
 
-  app.get("/health/live", async () => ({ status: "ok" }));
+  app.get("/health/live", async () => ({
+    status: "ok",
+    ...(options.demoMode ? { demoMode: true } : {}),
+  }));
 
   app.get("/health/ready", async (_request, reply) => {
     if (!database) {

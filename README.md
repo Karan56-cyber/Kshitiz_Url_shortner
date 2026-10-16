@@ -23,7 +23,30 @@ data relationships, and the staged delivery plan.
 
 ## Local development
 
-Requirements: Node.js 22+, npm, and Docker Compose.
+Requirements: Node.js 22+ and npm. Docker Compose is only needed for persistent
+local development.
+
+### Quick local demo (no database or Redis)
+
+Enable the local in-memory demo mode in `.env`:
+
+```sh
+cp .env.example .env
+# Set DEMO_MODE=true in .env
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000/` and use guest mode or register/sign in. Link creation,
+redirects, and analytics use the normal API flows, but demo data is held in memory
+and is cleared whenever the server restarts. The click worker is not used in this
+mode. Demo mode is rejected when `NODE_ENV=production`; do not use it for deployment
+or real user data.
+
+### Persistent local development
+
+For data that survives API restarts, keep `DEMO_MODE=false`, configure
+`DATABASE_URL` and `REDIS_URL` in `.env`, and start the supporting services:
 
 ```sh
 cp .env.example .env
@@ -56,6 +79,10 @@ logged; the visitor still receives the accepted redirect, so analytics for that
 request may be lost if Redis is unavailable.
 
 The liveness endpoint is `GET /health/live`; readiness is `GET /health/ready`.
+For a Vercel frontend with a Render API, PostgreSQL, Redis, and worker, see
+[docs/deployment.md](docs/deployment.md). The repository includes a Render Blueprint
+and Vercel project configuration; review provider plans and set the deployment
+origins before confirming hosted resources.
 
 ## Identity and workspaces
 

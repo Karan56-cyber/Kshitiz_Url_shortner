@@ -290,6 +290,15 @@ a {
   line-height: 1.5;
 }
 
+.demo-notice {
+  margin: 0 0 14px;
+  padding: 11px 12px;
+  color: #17372e;
+  background: #e5efe1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
