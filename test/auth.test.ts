@@ -27,10 +27,52 @@ class InMemoryAuthRepository implements AuthRepository {
     if (this.users.has(input.email)) {
       throw new DuplicateEmailError();
     }
-    const user = { id: this.nextId("user"), ...input };
+    const user = {
+      id: this.nextId("user"),
+      ...input,
+      isGuest: false,
+      guestExpiresAt: null,
+    };
     const workspace = this.addWorkspace(user.id, "Personal workspace", "OWNER");
     this.users.set(user.email, user);
     return { user, workspace };
+  }
+
+  async createGuestWorkspace(expiresAt: Date): Promise<{
+    user: AuthUser;
+    workspace: WorkspaceSummary;
+  }> {
+    const id = this.nextId("user");
+    const user: AuthUser = {
+      id,
+      email: `guest-${id}@guest.linkpulse.invalid`,
+      passwordHash: "test-guest-credential",
+      isGuest: true,
+      guestExpiresAt: expiresAt,
+    };
+    const workspace = this.addWorkspace(user.id, "Guest workspace", "OWNER");
+    this.users.set(user.email, user);
+    return { user, workspace };
+  }
+
+  async deleteExpiredGuestAccounts(before: Date, limit: number): Promise<number> {
+    const expiredUsers = [...this.users.values()]
+      .filter(
+        (user) =>
+          user.isGuest &&
+          user.guestExpiresAt !== null &&
+          user.guestExpiresAt <= before,
+      )
+      .slice(0, limit);
+    for (const user of expiredUsers) {
+      this.users.delete(user.email);
+      const workspaces = this.workspaces.get(user.id) ?? [];
+      this.workspaces.delete(user.id);
+      for (const workspace of workspaces) {
+        this.memberships.delete(`${workspace.id}:${user.id}`);
+      }
+    }
+    return expiredUsers.length;
   }
 
   async listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
@@ -173,6 +215,84 @@ describe("authentication and workspace access", () => {
       user: { email: "user@example.com" },
     });
     expect(response.json().accessToken).toEqual(expect.any(String));
+  });
+
+  it("starts a temporary guest workspace with a scoped token and scheduled expiry", async () => {
+    const { app, repository } = createApp();
+    const startedAt = Date.now();
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/guest",
+    });
+    const body = response.json();
+    const expiresAt = new Date(body.user.guestExpiresAt);
+    const headers = { authorization: `Bearer ${body.accessToken}` };
+
+    expect(response.statusCode).toBe(201);
+    expect(body.user).toMatchObject({ isGuest: true });
+    expect(body.user).not.toHaveProperty("email");
+    expect(body.workspace).toMatchObject({
+      name: "Guest workspace",
+      role: "OWNER",
+    });
+    expect(expiresAt.getTime()).toBeGreaterThanOrEqual(
+      startedAt + 7 * 86_400_000,
+    );
+    expect(expiresAt.getTime()).toBeLessThanOrEqual(
+      Date.now() + 7 * 86_400_000,
+    );
+
+    const profile = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers,
+    });
+    expect(profile.json()).toMatchObject({
+      id: body.user.id,
+      isGuest: true,
+      guestExpiresAt: body.user.guestExpiresAt,
+    });
+
+    const listed = await app.inject({
+      method: "GET",
+      url: "/workspaces",
+      headers,
+    });
+    expect(listed.json()).toHaveLength(1);
+    expect(listed.json()[0]).toMatchObject({
+      id: body.workspace.id,
+      name: "Guest workspace",
+    });
+
+    const extraWorkspace = await app.inject({
+      method: "POST",
+      url: "/workspaces",
+      headers,
+      payload: { name: "Another workspace" },
+    });
+    expect(extraWorkspace.statusCode).toBe(403);
+
+    expect(
+      await repository.deleteExpiredGuestAccounts(
+        new Date(startedAt + 8 * 86_400_000),
+        10,
+      ),
+    ).toBe(1);
+    expect(await repository.listWorkspaces(body.user.id)).toEqual([]);
+  });
+
+  it("rate-limits guest workspace creation", async () => {
+    const { app } = createApp();
+    const responses = [];
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      responses.push(await app.inject({ method: "POST", url: "/auth/guest" }));
+    }
+    expect(responses.slice(0, 3).map(({ statusCode }) => statusCode)).toEqual([
+      201,
+      201,
+      201,
+    ]);
+    expect(responses[3].statusCode).toBe(429);
   });
 
   it("validates registration payloads and requires authentication for workspace access", async () => {

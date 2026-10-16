@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!--
+      THESIS: Plant a route once; read its real visits in a living link ledger.
+      OWN-WORLD: Fern ink, leaf green, pollen amber, and flower coral mark a matte field log.
+      STORY: Sign in, create a short link, then review recorded visits and link status.
+      FIRST VIEWPORT: Teddy animation fills the left login panel; the account form owns the right.
+      FORM: Grounded direction 4; Seedling Field Ledger, staged as a create-first URL register (seed 085682d8).
+    -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17372e">
+    <meta
+      name="description"
+      content="Create short links and review recorded traffic in your LinkPulse workspace."
+    >
+    <title>LinkPulse — grow a clear picture of every click</title>
+    <link rel="stylesheet" href="/app.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main id="app">
+      <section id="auth-view" class="auth-view">
+        <header class="auth-header">
+          <a class="wordmark" href="/" aria-label="LinkPulse home">
+            <svg class="wordmark-mark" viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M16 27V15" />
+              <path d="M16 17C7 17 5 11 5 6c7 0 12 3 11 11Z" />
+              <path d="M16 21c0-7 4-11 11-11 0 6-3 12-11 12" />
+            </svg>
+            <span>LinkPulse</span>
+          </a>
+          <button id="auth-mode-toggle" class="text-button" type="button">
+            Create an account
+          </button>
+        </header>
+
+        <div class="auth-layout">
+          <section class="welcome-panel" aria-labelledby="welcome-heading">
+            <div class="welcome-copy">
+              <h1 id="welcome-heading">See where your links take you.</h1>
+              <p class="welcome-description">
+                Make a short route. Follow its recorded visits.
+              </p>
+            </div>
+            <div class="mascot-wrap">
+              <canvas
+                id="login-animation"
+                class="mascot-canvas"
+                aria-label="Teddy, LinkPulse's animated mascot"
+                role="img"
+              ></canvas>
+              <p id="animation-fallback" class="animation-fallback" hidden>
+                Your links are ready to take root.
+              </p>
+            </div>
+            <p class="welcome-footnote">
+              Accepted redirects stay quick. Analytics follows in the background.
+            </p>
+          </section>
+
+          <section class="auth-form-panel" aria-labelledby="auth-title">
+            <div class="auth-form-inner">
+              <div class="mobile-mark wordmark" aria-hidden="true">
+                <svg class="wordmark-mark" viewBox="0 0 32 32">
+                  <path d="M16 27V15" />
+                  <path d="M16 17C7 17 5 11 5 6c7 0 12 3 11 11Z" />
+                  <path d="M16 21c0-7 4-11 11-11 0 6-3 12-11 12" />
+                </svg>
+                <span>LinkPulse</span>
+              </div>
+              <h2 id="auth-title">Start with a real link.</h2>
+              <p id="auth-intro" class="auth-intro">
+                Create a short link and check its traffic without setting up an account.
+              </p>
+              <div class="guest-entry">
+                <button id="guest-start" class="primary-button guest-button" type="button">
+                  Continue as guest
+                </button>
+                <p class="guest-retention">
+                  Guest workspaces, links, and analytics are automatically deleted after 7 days.
+                </p>
+              </div>
+              <div class="auth-divider"><span>or use an account</span></div>
+              <form id="auth-form" novalidate>
+                <label for="auth-email">Email address</label>
+                <input
+                  id="auth-email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="you@example.com"
+                  maxlength="254"
+                  required
+                >
+                <label for="auth-password">Password</label>
+                <input
+                  id="auth-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="At least 12 characters"
+                  minlength="12"
+                  maxlength="128"
+                  required
+                >
+                <p id="auth-error" class="form-message" role="alert" hidden></p>
+                <button id="auth-submit" class="primary-button" type="submit">
+                  Sign in
+                </button>
+              </form>
+              <p class="privacy-note">
+                No raw visitor IPs are stored. Bot visits are left out of analytics.
+              </p>
+            </div>
+          </section>
+        </div>
+        <footer class="auth-footer">
+          <span>LinkPulse</span>
+          <span>Short links, with a clearer view.</span>
+        </footer>
+      </section>
+
+      <section id="dashboard-view" class="dashboard-view" hidden>
+        <aside class="sidebar">
+          <a class="wordmark sidebar-wordmark" href="/" aria-label="LinkPulse home">
+            <svg class="wordmark-mark" viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M16 27V15" />
+              <path d="M16 17C7 17 5 11 5 6c7 0 12 3 11 11Z" />
+              <path d="M16 21c0-7 4-11 11-11 0 6-3 12-11 12" />
+            </svg>
+            <span>LinkPulse</span>
+          </a>
+          <nav class="sidebar-nav" aria-label="Main navigation">
+            <a class="nav-link is-current" href="#link-ledger" aria-current="page">
+              <span class="nav-glyph" aria-hidden="true">↗</span>
+              <span>Links</span>
+            </a>
+            <a class="nav-link" href="#traffic">
+              <span class="nav-glyph" aria-hidden="true">⌁</span>
+              <span>Traffic</span>
+            </a>
+          </nav>
+          <div class="sidebar-bottom">
+            <p class="sidebar-caption">A steady view of every route.</p>
+            <button id="sign-out" class="sign-out-button" type="button">
+              Sign out
+            </button>
+          </div>
+        </aside>
+
+        <div class="dashboard-main">
+          <header class="topbar">
+            <label class="visually-hidden" for="workspace-select">Workspace</label>
+            <select id="workspace-select" class="workspace-select"></select>
+            <span class="workspace-role" id="workspace-role"></span>
+          </header>
+
+          <div class="dashboard-content">
+            <header class="page-heading">
+              <div>
+                <h1>Your links, growing.</h1>
+                <p>Follow recorded visits across your workspace.</p>
+                <p id="guest-notice" class="guest-notice" role="status" hidden></p>
+              </div>
+              <span id="data-window" class="data-window">Last 30 days</span>
+            </header>
+
+            <section class="create-section" aria-labelledby="create-title">
+              <div class="create-intro">
+                <h2 id="create-title">Plant a new link</h2>
+                <p>Paste a destination to create a shareable short URL.</p>
+              </div>
+              <form id="create-link-form" class="create-form" novalidate>
+                <div class="destination-field">
+                  <label class="visually-hidden" for="destination-url">
+                    Destination URL
+                  </label>
+                  <input
+                    id="destination-url"
+                    name="destinationUrl"
+                    type="url"
+                    placeholder="https://your-site.com/a-long-page"
+                    maxlength="2048"
+                    required
+                  >
+                </div>
+                <div class="alias-field">
+                  <label class="visually-hidden" for="link-alias">
+                    Custom short name
+                  </label>
+                  <span class="alias-prefix" aria-hidden="true">/</span>
+                  <input
+                    id="link-alias"
+                    name="alias"
+                    type="text"
+                    placeholder="short-name"
+                    minlength="3"
+                    maxlength="64"
+                    pattern="[A-Za-z0-9_-]{3,64}"
+                    aria-describedby="alias-help"
+                  >
+                </div>
+                <button id="create-link-submit" class="primary-button" type="submit">
+                  Create link
+                </button>
+                <p id="alias-help" class="visually-hidden">
+                  Use 3 to 64 letters, numbers, underscores, or hyphens.
+                </p>
+              </form>
+              <details class="advanced-options">
+                <summary>Set an expiry or click limit</summary>
+                <div class="advanced-fields">
+                  <label>
+                    Expires at
+                    <input id="link-expiry" name="expiresAt" type="datetime-local">
+                  </label>
+                  <label>
+                    Maximum accepted clicks
+                    <input
+                      id="link-max-clicks"
+                      name="maxClicks"
+                      type="number"
+                      min="1"
+                      max="2147483647"
+                      inputmode="numeric"
+                    >
+                  </label>
+                </div>
+              </details>
+              <p id="create-message" class="form-message" role="status" hidden></p>
+            </section>
+
+            <section id="traffic" class="traffic-section" aria-labelledby="traffic-title">
+              <div class="section-heading">
+                <div>
+                  <h2 id="traffic-title">Recorded visits</h2>
+                  <p>Known bots are excluded from these analytics totals.</p>
+                </div>
+                <div class="range-picker" role="group" aria-label="Analytics date range">
+                  <button type="button" data-days="7">7 days</button>
+                  <button type="button" data-days="30" aria-pressed="true">30 days</button>
+                  <button type="button" data-days="90">90 days</button>
+                </div>
+              </div>
+              <div class="traffic-readout">
+                <p class="traffic-total">
+                  <strong id="click-total">—</strong>
+                  <span>recorded clicks</span>
+                </p>
+                <div class="chart-wrap">
+                  <svg
+                    id="traffic-chart"
+                    class="traffic-chart"
+                    viewBox="0 0 720 160"
+                    role="img"
+                    aria-label="Recorded clicks by day"
+                    preserveAspectRatio="none"
+                  ></svg>
+                  <div id="chart-axis-labels" class="chart-axis-labels" hidden aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <p id="chart-empty" class="chart-empty" hidden>
+                    No recorded visits in this range yet.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section id="link-ledger" class="ledger-section" aria-labelledby="ledger-title">
+              <div class="section-heading ledger-heading">
+                <div>
+                  <h2 id="ledger-title">Your link ledger</h2>
+                  <p id="link-count">Loading workspace links…</p>
+                </div>
+                <button id="refresh-links" class="quiet-button" type="button">
+                  Refresh
+                </button>
+              </div>
+              <div class="table-scroll">
+                <table class="link-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Short link</th>
+                      <th scope="col">Destination</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Visits</th>
+                      <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="link-rows"></tbody>
+                </table>
+                <p id="ledger-empty" class="ledger-empty" hidden>
+                  No links yet. Add a destination above to start your ledger.
+                </p>
+              </div>
+            </section>
+            <p id="dashboard-message" class="form-message dashboard-message" role="status" hidden></p>
+            <p class="analytics-note">
+              Clicks are counted when a redirect is accepted. Analytics may arrive
+              shortly after the redirect.
+            </p>
+          </div>
+        </main>
+      </section>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T16:31:57Z",
+  "title": "Design System: LinkPulse",
+  "extensions": {
+    "breakpoints": [
+      {
+        "name": "tablet",
+        "value": "920px"
+      },
+      {
+        "name": "mobile",
+        "value": "680px"
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-feedback",
+        "value": "120ms ease-out",
+        "purpose": "Brief color and press feedback on primary actions."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Minimize interface transitions when reduced motion is requested."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-commitment form action.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">Create link</button>",
+      "css": ".ds-button-primary { min-height: 50px; padding: 0 20px; border: 1px solid var(--forest, #17372e); border-radius: 3px; color: #fff; background: var(--forest, #17372e); font: 700 14px ui-sans-serif, system-ui, sans-serif; transition: background-color 120ms ease-out, transform 120ms ease-out; } .ds-button-primary:hover { background: #245542; } .ds-button-primary:focus-visible { outline: 3px solid var(--coral, #e98770); outline-offset: 3px; } .ds-button-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Quiet Action",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Secondary text action for refresh and row controls.",
+      "html": "<button class=\"ds-button-quiet\" type=\"button\">Refresh</button>",
+      "css": ".ds-button-quiet { padding: 8px 10px; border: 0; color: var(--forest, #17372e); background: transparent; font: 650 12px ui-sans-serif, system-ui, sans-serif; } .ds-button-quiet:hover { text-decoration: underline; text-underline-offset: 4px; } .ds-button-quiet:focus-visible { outline: 3px solid var(--coral, #e98770); outline-offset: 3px; } .ds-button-quiet:active { color: #102b24; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Destination, alias, and account input.",
+      "html": "<label class=\"ds-field\"><span>Email address</span><input type=\"email\" placeholder=\"you@example.com\"></label>",
+      "css": ".ds-field { display: grid; gap: 8px; color: #1a2d25; font: 650 13px ui-sans-serif, system-ui, sans-serif; } .ds-field input { min-height: 50px; padding: 0 14px; border: 1px solid #c8d5c9; border-radius: 3px; color: #1a2d25; background: #fff; font: 400 15px ui-sans-serif, system-ui, sans-serif; } .ds-field input:hover { border-color: #8ba995; } .ds-field input:focus-visible { outline: 3px solid #e98770; outline-offset: 3px; }"
+    },
+    {
+      "name": "Current Navigation Link",
+      "kind": "nav",
+      "refersTo": "navigation-current",
+      "description": "Workspace navigation link with a visible current state.",
+      "html": "<a class=\"ds-nav-current\" href=\"#links\" aria-current=\"page\"><span aria-hidden=\"true\">↗</span> Links</a>",
+      "css": ".ds-nav-current { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 3px; color: #102b24; background: #82c877; font: 600 14px ui-sans-serif, system-ui, sans-serif; text-decoration: none; } .ds-nav-current:hover { background: #9bd58f; } .ds-nav-current:focus-visible { outline: 3px solid #e98770; outline-offset: 3px; } .ds-nav-current:active { background: #6dbb63; }"
+    },
+    {
+      "name": "Link Status",
+      "kind": "chip",
+      "refersTo": "status-stamp",
+      "description": "Compact active or disabled state in the link ledger.",
+      "html": "<span class=\"ds-status\">Active</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 7px; color: #2c6941; font: 600 12px ui-sans-serif, system-ui, sans-serif; } .ds-status::before { width: 7px; height: 7px; border-radius: 50%; background: #82c877; content: \"\"; } .ds-status:hover { color: #17372e; } .ds-status:focus-visible { outline: 3px solid #e98770; outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Seedling Field Ledger",
+    "overview": "LinkPulse uses the visual language of a practical field notebook: fern ink, leaf-green markers, a pale working surface, and small pollen and coral signals. It is direct and task-oriented, with the supplied Teddy animation providing the distinctive character rather than decorative interface chrome. The ledger favors open sections, fine dividers, readable measurements, and a compact status vocabulary. The interface stays grounded in real workspace data; empty states are explicit and never filled with invented activity.",
+    "keyCharacteristics": [
+      "Forest green anchors navigation and primary actions.",
+      "Leaf green marks active states; pollen and coral are reserved for small signals.",
+      "Links and traffic use aligned, unboxed rows and a simple daily line chart.",
+      "The supplied Rive animation is served locally and respects reduced motion."
+    ],
+    "rules": [
+      {
+        "name": "The Working-Measure Rule",
+        "body": "Use tabular numerals for counts and keep labels short; do not dress ordinary UI text in a technical mono face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Field-Surface Rule",
+        "body": "Separate working regions with tonal surfaces or dividers, not stacked shadow cards.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use the supplied Teddy Rive file locally, with the Teddy artboard and Login Machine state machine.",
+      "Do respect prefers-reduced-motion and show a useful fallback if animation loading fails.",
+      "Do label analytics as recorded and keep bot-exclusion semantics visible.",
+      "Do render user/API content as text, not injected HTML."
+    ],
+    "donts": [
+      "Don't invent traffic, destinations, or workspace data.",
+      "Don't treat a disabled link as deleted; preserve its reportable state.",
+      "Don't add card grids, rounded dashboard tiles, or decorative shadows that compete with the ledger.",
+      "Don't imply the browser needs a third-party API key; requests are same-origin."
+    ]
+  }
+}

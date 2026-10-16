@@ -3,7 +3,7 @@
 ## Request and data flow
 
 ```text
-User -> registration/login -> signed access token -> workspace authorization
+User -> guest start or registration/login -> signed access token -> workspace authorization
      -> validate destination and link rules -> persist Link -> return short URL
 
 Visitor -> GET /:alias -> load link -> evaluate status / expiry / click cap
@@ -23,9 +23,13 @@ Admin -> disable abusive Link -> redirect service rejects subsequent requests
   stable error responses. Route handlers delegate business behavior to services.
 - **Identity and access:** Users belong to workspaces through role-bearing memberships.
   Registration creates the user, personal workspace, and OWNER membership atomically.
-  Passwords use scrypt hashes; API access tokens are short-lived and signed. Every
-  management and analytics query is scoped to a workspace the caller can access.
-  Authentication rate limits use Redis so limits are shared across API instances.
+  Guest start creates a persisted guest identity and OWNER workspace without requiring
+  an email or password. Guest tokens and data expire after seven days; the worker
+  removes guest-created links before deleting the user and any orphaned workspace.
+  Guest identities cannot create additional workspaces. Passwords use scrypt hashes;
+  API access tokens are signed. Every management and analytics query is scoped to a
+  workspace the caller can access. Authentication rate limits use Redis so limits are
+  shared across API instances.
 - **Link service:** Owns alias uniqueness, destination validation, link lifecycle, and
   rule evaluation. Database constraints are the final authority for alias uniqueness.
 - **Redirect path:** Performs only the reads and rule checks required to decide the
@@ -46,6 +50,9 @@ Admin -> disable abusive Link -> redirect service rejects subsequent requests
   `clickCount` still counts every accepted redirect, including bots.
 - **PostgreSQL:** Source of truth for users, memberships, campaigns, links, and click
   events. Foreign keys and indexes support tenant scoping and time-range queries.
+- **Guest retention:** The user expiration index supports bounded cleanup batches.
+  Expired users' created links (and cascading click events) are deleted transactionally;
+  workspaces with other members are preserved.
 
 ## Core relationships
 

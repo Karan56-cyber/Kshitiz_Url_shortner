@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import Redis from "ioredis";
+import { PrismaAuthRepository } from "./auth/prisma-repository.js";
 import { loadEnvironment } from "./config/env.js";
 import { PrismaClickRepository } from "./clicks/prisma-repository.js";
 import { ClickEventWorker } from "./clicks/worker.js";
@@ -26,9 +27,12 @@ async function startWorker(): Promise<void> {
     lazyConnect: true,
     maxRetriesPerRequest: 2,
   });
+  const authRepository = new PrismaAuthRepository(prisma);
   const worker = new ClickEventWorker({
     redis,
     repository: new PrismaClickRepository(prisma),
+    maintenance: () =>
+      authRepository.deleteExpiredGuestAccounts(new Date(), 1_000),
     logger: {
       info: (fields, message) => log("info", fields, message),
       warn: (fields, message) => log("warn", fields, message),

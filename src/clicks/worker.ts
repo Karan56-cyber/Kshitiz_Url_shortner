@@ -28,6 +28,7 @@ export interface ClickEventWorkerOptions {
   visibilityTimeoutMs?: number;
   retentionDays?: number;
   retentionBatchSize?: number;
+  maintenance?: () => Promise<number>;
 }
 
 function asMessages(value: unknown): StreamMessage[] {
@@ -311,6 +312,22 @@ export class ClickEventWorker {
         { deleted, retentionDays: this.retentionDays },
         "Expired click events removed",
       );
+    }
+    if (this.options.maintenance) {
+      try {
+        const removedGuests = await this.options.maintenance();
+        if (removedGuests > 0) {
+          this.options.logger.info(
+            { deleted: removedGuests },
+            "Expired guest workspaces removed",
+          );
+        }
+      } catch (error) {
+        this.options.logger.error(
+          { err: error },
+          "Guest workspace retention cleanup failed",
+        );
+      }
     }
   }
 }

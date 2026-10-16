@@ -1,5 +1,9 @@
 node_modules/
 dist/
+public/app.js
+public/assets/rive.wasm
+.impeccable/hook.cache.json
+.impeccable/questions/
 src/generated/prisma/
 .env
 .env.*

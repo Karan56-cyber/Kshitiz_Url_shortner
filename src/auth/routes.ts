@@ -16,8 +16,13 @@ import type { AuthRepository, WorkspaceRole } from "./types.js";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { email: string };
-    user: { email: string; sub: string };
+    payload: { email: string; guest?: boolean; guestExpiresAt?: string };
+    user: {
+      email: string;
+      sub: string;
+      guest?: boolean;
+      guestExpiresAt?: string;
+    };
   }
 }
 
@@ -189,10 +194,10 @@ export function registerAuthentication(
         if (!body) return;
         const email = normalizedEmail(body.email);
         const user = await options.repository.findUserByEmail(email);
-        const passwordMatches = await verifyPassword(
-          body.password,
-          user?.passwordHash,
-        );
+        const passwordMatches =
+          user && !user.isGuest
+            ? await verifyPassword(body.password, user.passwordHash)
+            : false;
         if (!user || !passwordMatches) {
           return reply.code(401).send({
             error: "Unauthorized",
@@ -203,9 +208,53 @@ export function registerAuthentication(
       },
     );
 
+    authApp.post(
+      "/auth/guest",
+      { config: { rateLimit: { max: 3, timeWindow: "1 hour" } } },
+      async (_request, reply) => {
+        const retentionDays = 7;
+        const guestExpiresAt = new Date(
+          Date.now() + retentionDays * 86_400_000,
+        );
+        const { user, workspace } =
+          await options.repository.createGuestWorkspace(guestExpiresAt);
+        const accessToken = authApp.jwt.sign(
+          {
+            email: user.email,
+            guest: true,
+            guestExpiresAt: guestExpiresAt.toISOString(),
+          },
+          {
+            sub: user.id,
+            expiresIn: retentionDays * 86_400,
+          },
+        );
+        return reply.code(201).send({
+          accessToken,
+          tokenType: "Bearer",
+          expiresIn: retentionDays * 86_400,
+          user: {
+            id: user.id,
+            isGuest: true,
+            guestExpiresAt: guestExpiresAt.toISOString(),
+          },
+          workspace: {
+            id: workspace.id,
+            name: workspace.name,
+            role: workspace.role,
+          },
+        });
+      },
+    );
+
     authApp.get("/auth/me", { preHandler: authenticate }, async (request) => ({
       id: request.user.sub,
-      email: request.user.email,
+      ...(request.user.guest
+        ? {
+            isGuest: true,
+            guestExpiresAt: request.user.guestExpiresAt,
+          }
+        : { email: request.user.email }),
     }));
 
     authApp.get(
@@ -226,6 +275,12 @@ export function registerAuthentication(
       "/workspaces",
       { preHandler: authenticate },
       async (request, reply) => {
+        if (request.user.guest) {
+          return reply.code(403).send({
+            error: "Forbidden",
+            message: "Guest workspaces cannot create additional workspaces",
+          });
+        }
         const body = parseBody(workspaceSchema, request, reply);
         if (!body) return;
         const workspace = await options.repository.createWorkspace(

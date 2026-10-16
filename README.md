@@ -34,6 +34,15 @@ npm run db:deploy
 npm run dev
 ```
 
+The web app is served by the API at `http://localhost:3000/`. It uses same-origin
+requests and needs no browser API key or separate frontend environment variable.
+Continue as a guest to create links and view persisted click analytics immediately,
+or sign in/register to use a saved account. Guest workspaces are server-backed and
+their workspace, links, and analytics are automatically deleted after seven days.
+The login screen loads the supplied Rive animation as a local asset; `npm run dev`
+and `npm run build` generate the bundled browser script and copy the Rive WebAssembly
+runtime into `public/assets/`.
+
 Run the click-event worker in another terminal:
 
 ```sh
@@ -50,12 +59,23 @@ The liveness endpoint is `GET /health/live`; readiness is `GET /health/ready`.
 
 ## Identity and workspaces
 
+- `POST /auth/guest` creates a server-backed guest identity and OWNER workspace.
+  Its bearer token lasts seven days; the workspace and its links are removed by the
+  worker after expiry. Guest workspaces use the same link and analytics endpoints as
+  registered accounts, but cannot create additional workspaces.
 - `POST /auth/register` creates a normalized email account, a personal workspace,
   and an OWNER membership atomically. Passwords must be 12–128 characters.
 - `POST /auth/login` returns a signed 15-minute Bearer access token.
 - `GET /auth/me`, `GET /workspaces`, and `POST /workspaces` require that token.
-- Authentication endpoints are limited to five requests per IP per minute. The
-  API uses Redis for shared rate-limit state across instances.
+- Register/login are limited to five requests per IP per minute; guest workspace
+  creation is limited to three per IP per hour. The API uses Redis for shared
+  rate-limit state across instances.
+
+The supplied Supabase API keys are not used by this architecture: the API connects
+directly to PostgreSQL through `DATABASE_URL` and uses Redis through `REDIS_URL`.
+Never put database, Redis, or service-role credentials in frontend files or tracked
+configuration. A PostgreSQL password by itself is not a complete connection URL;
+configure the full host/database/SSL URL in the deployment secret store.
 
 Use the reusable workspace membership and role pre-handler for workspace-scoped
 routes; never trust a workspace ID supplied by a caller without checking membership.
