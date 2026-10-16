@@ -13,6 +13,7 @@ function isLocalHostname(hostname: string): boolean {
     normalized.endsWith(".localhost") ||
     normalized.endsWith(".local") ||
     normalized === "::1" ||
+    normalized === "[::1]" ||
     /^(?:127|10|192\.168|169\.254)\./.test(normalized) ||
     /^172\.(?:1[6-9]|2\d|3[01])\./.test(normalized)
   );

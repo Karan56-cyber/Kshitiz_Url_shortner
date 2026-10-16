@@ -97,7 +97,7 @@ function setAuthMode(mode) {
       : resettingPassword
         ? "Save new password"
         : "Sign in";
-  authModeToggle.hidden = !recovering;
+  authModeToggle.hidden = false;
   authModeToggle.textContent = recovering
     ? "Back to sign in"
     : registering

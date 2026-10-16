@@ -875,9 +875,6 @@ a {
   stroke: #dbe5d9;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-  stroke-dasharray: 1200;
-  stroke-dashoffset: 1200;
-  animation: chart-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes chart-draw {
@@ -897,6 +894,9 @@ a {
   stroke-linejoin: round;
   stroke-width: 2.5;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .chart-point {

@@ -246,19 +246,23 @@ export function registerAuthentication(
         if (user && !user.isGuest) {
           const token = randomBytes(32).toString("base64url");
           const tokenHash = createHash("sha256").update(token).digest("hex");
-          await resetRepository.createPasswordResetToken({
-            userId: user.id,
-            tokenHash,
-            expiresAt: new Date(Date.now() + 30 * 60_000),
-          });
           const resetUrl = new URL("/", publicBaseUrl);
           resetUrl.hash = new URLSearchParams({ resetToken: token }).toString();
           void Promise.resolve()
-            .then(() => resetMailer.sendPasswordReset(user.email, resetUrl.toString()))
+            .then(() =>
+              resetRepository.createPasswordResetToken({
+                userId: user.id,
+                tokenHash,
+                expiresAt: new Date(Date.now() + 30 * 60_000),
+              }),
+            )
+            .then(() =>
+              resetMailer.sendPasswordReset(user.email, resetUrl.toString()),
+            )
             .catch(async (error: unknown) => {
               request.log.error(
                 { err: error, userId: user.id },
-                "Password reset email delivery failed",
+                "Password reset preparation or email delivery failed",
               );
               try {
                 await resetRepository.deletePasswordResetToken(tokenHash);

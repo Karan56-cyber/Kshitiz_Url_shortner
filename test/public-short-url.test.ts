@@ -36,6 +36,12 @@ describe("public short link URLs", () => {
         origin: "http://localhost:3000",
       }),
     ).toBe("http://localhost:3000/local-link");
+    expect(
+      publicShortUrl("local-link", {
+        hostname: "[::1]",
+        origin: "http://[::1]:3000",
+      }),
+    ).toBe("http://[::1]:3000/local-link");
   });
 
   it("rejects aliases that do not match the short-link route", () => {

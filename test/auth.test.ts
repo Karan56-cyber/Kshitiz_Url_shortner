@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import type {
   AuthRepository,
@@ -284,6 +284,7 @@ describe("authentication and workspace access", () => {
     });
     expect(existing.statusCode).toBe(202);
     expect(existing.json()).toEqual(missing.json());
+    await vi.waitFor(() => expect(deliveries).toHaveLength(1));
     expect(deliveries).toHaveLength(1);
     expect(deliveries[0].email).toBe("user@example.com");
 
