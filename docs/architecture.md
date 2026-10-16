@@ -3,14 +3,14 @@
 ## Request and data flow
 
 ```text
-User -> API authentication -> workspace authorization
+User -> registration/login -> signed access token -> workspace authorization
      -> validate destination and link rules -> persist Link -> return short URL
 
 Visitor -> GET /:alias -> load link -> evaluate status / expiry / click cap
         -> (password required? verify before releasing destination)
-        -> enqueue ClickEvent -> redirect to destination
+        -> atomically claim click -> optional queue hook -> redirect to destination
 
-Workspace member -> analytics API -> aggregate ClickEvents by link/campaign/period
+Workspace member -> (future analytics API) -> aggregate ClickEvents by link/campaign/period
 Admin -> disable abusive Link -> redirect service rejects subsequent requests
 ```
 
@@ -19,14 +19,19 @@ Admin -> disable abusive Link -> redirect service rejects subsequent requests
 - **HTTP/API layer:** Fastify routes, request validation, authentication hooks, and
   stable error responses. Route handlers delegate business behavior to services.
 - **Identity and access:** Users belong to workspaces through role-bearing memberships.
-  Every management and analytics query is scoped to a workspace the caller can access.
+  Registration creates the user, personal workspace, and OWNER membership atomically.
+  Passwords use scrypt hashes; API access tokens are short-lived and signed. Every
+  management and analytics query is scoped to a workspace the caller can access.
+  Authentication rate limits use Redis so limits are shared across API instances.
 - **Link service:** Owns alias uniqueness, destination validation, link lifecycle, and
   rule evaluation. Database constraints are the final authority for alias uniqueness.
 - **Redirect path:** Performs only the reads and rule checks required to decide the
-  response. It must not wait for analytics aggregation or slow external lookups.
-- **Click pipeline:** A Redis-backed durable queue buffers sanitized click events;
-  workers persist events to PostgreSQL. Queue health, retries, and dead-letter handling
-  are operational requirements before production deployment.
+  response. The click counter is conditionally incremented in PostgreSQL so the
+  configured cap is respected under concurrent traffic. An injectable callback is the
+  seam for the next click-queue layer; no click events are written in this delivery.
+- **Click pipeline (next layer):** A Redis-backed durable queue should buffer sanitized
+  click events; workers persist them to PostgreSQL. Queue health, retries, and
+  dead-letter handling are operational requirements before production deployment.
 - **Analytics:** Reads persisted click events and returns time-bounded aggregates;
   reporting must not depend on hard-coded demo values.
 - **PostgreSQL:** Source of truth for users, memberships, campaigns, links, and click
@@ -48,22 +53,29 @@ policies should be configured before collecting production analytics.
 
 1. Resolve the alias; return not found for unknown aliases.
 2. Reject disabled, expired, or exhausted links without recording a successful click.
-3. For password-protected links, require and verify the password before revealing the
-   destination.
-4. Record the accepted click asynchronously and return the redirect response.
+3. For password-protected links, require and verify the password before consuming a
+   click or revealing the destination.
+4. Atomically increment the accepted-click counter only if the link is still active,
+   unexpired, and below its cap; the password hash must still match the initially
+   checked hash.
+5. Invoke the optional click queue hook and return the redirect response. Queue
+   failures are logged without blocking a valid redirect.
 
-Click-cap enforcement must be atomic across concurrent requests. The final redirect
-implementation will use a conditional database update (or an equivalent atomic counter)
-to avoid allowing requests past the configured cap.
+Workspace link APIs are tenant scoped for every list/read/update/disable operation.
+Destination validation permits absolute HTTP(S) URLs only, rejects credentials and
+local or non-public IP targets, and normalizes the stored URL. Passwords use the same
+scrypt password-hashing implementation as account credentials; only their hash is
+persisted.
 
 ## Delivery plan
 
 1. **Foundation:** API runtime, validated configuration, health checks, database schema,
    local PostgreSQL/Redis, architecture docs, and automated checks.
 2. **Authentication/workspaces:** registration/login, secure password hashing, signed
-   access tokens, workspace creation, and role-based access checks.
-3. **Link lifecycle:** create/list/update/disable links; aliases; URL validation; expiry,
-   click caps, and password protection; redirect behavior and link-creation limits.
+   access tokens, workspace creation, and role-based access checks (implemented).
+3. **Link lifecycle (implemented):** create/list/update/disable links; aliases; URL
+   validation; expiry, click caps, and password protection; atomic redirects and
+   link-creation limits.
 4. **Tracking/analytics:** bot filtering, durable asynchronous click ingestion, safe
    metadata capture, and workspace-scoped time/campaign/link aggregates.
 
