@@ -8,15 +8,16 @@ web
 
 ## Users
 
-The first frontend audience is an individual user who wants to create and manage
-short links and check their click performance. Workspace membership supports
-collaboration, but the initial dashboard should prioritize a solo user's workflow.
+The first frontend audience includes first-time users who want to create and manage
+short links and check their click performance immediately, without account setup.
+Guest workspaces support that first visit; registered workspaces remain available for
+users who want a saved account.
 
 ## Product Purpose
 
 LinkPulse lets users create short URLs with lifecycle controls and view click
-analytics for links in their workspace. Success means a user can sign in, create a
-shareable link, and understand its recorded traffic in one visit.
+analytics for links in their workspace. Success means a user can start as a guest,
+create a shareable link, and understand its recorded traffic in one visit.
 
 ## Positioning
 
@@ -31,8 +32,10 @@ destination. The system uses PostgreSQL, Prisma, and Redis.
 
 ## Capabilities and Constraints
 
-- The API supports registration, login, workspace listing/creation, link
+- The API supports guest sessions, registration, login, workspace listing/creation, link
   create/list/read/update/disable, public redirects, and workspace analytics.
+- Guest workspaces are persisted and scoped like registered workspaces; they expire
+  after seven days and cannot create additional workspaces.
 - Link options include campaign association, expiry, click limits, and password
   protection. This MVP does not expose campaign creation or QR/CSV/custom-domain
   workflows.

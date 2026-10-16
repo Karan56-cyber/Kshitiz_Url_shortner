@@ -31,10 +31,36 @@ class InMemoryAuthRepository implements AuthRepository {
     passwordHash: string;
   }): Promise<{ user: AuthUser; workspace: WorkspaceSummary }> {
     if (this.users.has(input.email)) throw new Error("Duplicate user");
-    const user = { id: this.nextId("user"), ...input };
+    const user = {
+      id: this.nextId("user"),
+      ...input,
+      isGuest: false,
+      guestExpiresAt: null,
+    };
     const workspace = this.addWorkspace(user.id, "Personal workspace", "OWNER");
     this.users.set(user.email, user);
     return { user, workspace };
+  }
+
+  async createGuestWorkspace(expiresAt: Date): Promise<{
+    user: AuthUser;
+    workspace: WorkspaceSummary;
+  }> {
+    const id = this.nextId("user");
+    const user: AuthUser = {
+      id,
+      email: `guest-${id}@guest.linkpulse.invalid`,
+      passwordHash: "test-guest-credential",
+      isGuest: true,
+      guestExpiresAt: expiresAt,
+    };
+    const workspace = this.addWorkspace(user.id, "Guest workspace", "OWNER");
+    this.users.set(user.email, user);
+    return { user, workspace };
+  }
+
+  async deleteExpiredGuestAccounts(): Promise<number> {
+    return 0;
   }
 
   async listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
@@ -237,6 +263,31 @@ describe("workspace link lifecycle and redirects", () => {
     expect(listed.json()).toHaveLength(1);
     expect(fetched.statusCode).toBe(200);
     expect(fetched.json().alias).toBe("private-link");
+  });
+
+  it("lets a guest workspace use the normal link creation and listing routes", async () => {
+    const { app } = await setup();
+    const guestResponse = await app.inject({
+      method: "POST",
+      url: "/auth/guest",
+    });
+    const guest = guestResponse.json();
+    const headers = { authorization: `Bearer ${guest.accessToken}` };
+    const base = `/workspaces/${guest.workspace.id}/links`;
+
+    const created = await createLink(app, base, headers, {
+      alias: "guest-link",
+      destinationUrl: "https://example.com/guest",
+    });
+    const listed = await app.inject({ method: "GET", url: base, headers });
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      alias: "guest-link",
+      shortUrl: "https://sho.rt/guest-link",
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toHaveLength(1);
   });
 
   it("rejects unsafe destinations and invalid aliases before creating links", async () => {

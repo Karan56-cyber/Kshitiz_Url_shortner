@@ -19,14 +19,17 @@ enum LinkStatus {
 }
 
 model User {
-  id           String                @id @default(cuid())
-  email        String                @unique
-  passwordHash String
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  memberships  WorkspaceMembership[]
-  createdLinks Link[]                @relation("LinkCreator")
+  id             String                @id @default(cuid())
+  email          String                @unique
+  passwordHash   String
+  isGuest        Boolean               @default(false)
+  guestExpiresAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  memberships    WorkspaceMembership[]
+  createdLinks   Link[]                @relation("LinkCreator")
 
+  @@index([isGuest, guestExpiresAt])
   @@map("users")
 }
 
@@ -71,23 +74,23 @@ model Campaign {
 }
 
 model Link {
-  id            String      @id @default(cuid())
-  workspaceId   String
-  campaignId    String?
-  createdById   String
-  alias         String      @unique
-  destinationUrl String     @db.Text
-  status        LinkStatus  @default(ACTIVE)
-  expiresAt     DateTime?
-  maxClicks     Int?
-  clickCount    Int         @default(0)
-  passwordHash  String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaign      Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  createdBy     User        @relation("LinkCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  clickEvents   ClickEvent[]
+  id             String       @id @default(cuid())
+  workspaceId    String
+  campaignId     String?
+  createdById    String
+  alias          String       @unique
+  destinationUrl String       @db.Text
+  status         LinkStatus   @default(ACTIVE)
+  expiresAt      DateTime?
+  maxClicks      Int?
+  clickCount     Int          @default(0)
+  passwordHash   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign       Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdBy      User         @relation("LinkCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  clickEvents    ClickEvent[]
 
   @@index([workspaceId, createdAt])
   @@index([campaignId])

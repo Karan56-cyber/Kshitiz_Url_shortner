@@ -10,12 +10,14 @@ const authView = document.querySelector("#auth-view");
 const dashboardView = document.querySelector("#dashboard-view");
 const authForm = document.querySelector("#auth-form");
 const authModeToggle = document.querySelector("#auth-mode-toggle");
+const guestStartButton = document.querySelector("#guest-start");
 const authTitle = document.querySelector("#auth-title");
 const authIntro = document.querySelector("#auth-intro");
 const authSubmit = document.querySelector("#auth-submit");
 const authError = document.querySelector("#auth-error");
 const workspaceSelect = document.querySelector("#workspace-select");
 const workspaceRole = document.querySelector("#workspace-role");
+const guestNotice = document.querySelector("#guest-notice");
 const linkRows = document.querySelector("#link-rows");
 const linkCount = document.querySelector("#link-count");
 const ledgerEmpty = document.querySelector("#ledger-empty");
@@ -30,6 +32,8 @@ const chartAxisLabels = document.querySelector("#chart-axis-labels");
 const dataWindow = document.querySelector("#data-window");
 
 let accessToken = sessionStorage.getItem("linkpulseAccessToken") ?? "";
+let isGuest = false;
+let guestExpiresAt = "";
 let currentWorkspaceId = "";
 let workspaces = [];
 let authMode = "login";
@@ -50,10 +54,12 @@ function setMessage(element, message = "", success = false) {
 function setAuthMode(mode) {
   authMode = mode;
   const registering = mode === "register";
-  authTitle.textContent = registering ? "Start with one link." : "Welcome back.";
+  authTitle.textContent = registering
+    ? "Create your workspace."
+    : "Start with a real link.";
   authIntro.textContent = registering
-    ? "Create an account and your personal workspace."
-    : "Sign in to pick up where you left off.";
+    ? "Register to manage your links from a saved account."
+    : "Create a short link and check its traffic without setting up an account.";
   authSubmit.textContent = registering ? "Create account" : "Sign in";
   authModeToggle.textContent = registering
     ? "Already have an account? Sign in"
@@ -154,6 +160,8 @@ async function apiRequest(path, options = {}) {
   if (!response.ok) {
     if (response.status === 401 && accessToken && !path.startsWith("/auth/")) {
       accessToken = "";
+      isGuest = false;
+      guestExpiresAt = "";
       sessionStorage.removeItem("linkpulseAccessToken");
       showAuth("Your session expired. Sign in again to continue.");
     }
@@ -181,7 +189,21 @@ function updateWorkspaceOptions() {
     workspaceSelect.append(option);
   }
   workspaceSelect.value = currentWorkspaceId;
-  workspaceRole.textContent = selectedWorkspace()?.role.toLowerCase() ?? "";
+  workspaceRole.textContent = isGuest
+    ? "guest workspace"
+    : selectedWorkspace()?.role.toLowerCase() ?? "";
+  guestNotice.hidden = !isGuest;
+  if (isGuest && guestExpiresAt) {
+    const expiry = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(guestExpiresAt));
+    guestNotice.textContent =
+      `Guest mode: this workspace, links, and analytics will be deleted on ${expiry}.`;
+  }
+  document.querySelector("#sign-out").textContent = isGuest
+    ? "End guest session"
+    : "Sign out";
 }
 
 async function loadWorkspaces(preferredWorkspaceId = "") {
@@ -488,6 +510,31 @@ authModeToggle.addEventListener("click", () => {
   document.querySelector("#auth-email").focus();
 });
 
+guestStartButton.addEventListener("click", async () => {
+  guestStartButton.disabled = true;
+  guestStartButton.textContent = "Starting guest workspace…";
+  setMessage(authError);
+  try {
+    const guestSession = await apiRequest("/auth/guest", { method: "POST" });
+    accessToken = guestSession.accessToken;
+    isGuest = true;
+    guestExpiresAt = guestSession.user.guestExpiresAt;
+    sessionStorage.setItem("linkpulseAccessToken", accessToken);
+    await loadWorkspaces(guestSession.workspace.id);
+    showDashboard();
+    try {
+      await loadDashboard();
+    } catch (error) {
+      setMessage(dashboardMessage, error.message);
+    }
+  } catch (error) {
+    setMessage(authError, error.message);
+  } finally {
+    guestStartButton.disabled = false;
+    guestStartButton.textContent = "Continue as guest";
+  }
+});
+
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!authForm.reportValidity()) return;
@@ -504,6 +551,8 @@ authForm.addEventListener("submit", async (event) => {
       { method: "POST", body: payload },
     );
     accessToken = account.accessToken;
+    isGuest = false;
+    guestExpiresAt = "";
     sessionStorage.setItem("linkpulseAccessToken", accessToken);
     authForm.reset();
     await loadWorkspaces(account.workspace?.id ?? "");
@@ -599,6 +648,8 @@ document.querySelector("#refresh-links").addEventListener("click", async (event)
 
 document.querySelector("#sign-out").addEventListener("click", () => {
   accessToken = "";
+  isGuest = false;
+  guestExpiresAt = "";
   currentWorkspaceId = "";
   workspaces = [];
   sessionStorage.removeItem("linkpulseAccessToken");
@@ -613,7 +664,9 @@ async function initialize() {
     return;
   }
   try {
-    await apiRequest("/auth/me");
+    const profile = await apiRequest("/auth/me");
+    isGuest = profile.isGuest === true;
+    guestExpiresAt = isGuest ? profile.guestExpiresAt ?? "" : "";
     await loadWorkspaces();
     showDashboard();
     try {
@@ -624,6 +677,8 @@ async function initialize() {
   } catch (error) {
     if (error.status === 401) {
       accessToken = "";
+      isGuest = false;
+      guestExpiresAt = "";
       sessionStorage.removeItem("linkpulseAccessToken");
       showAuth("Your session ended. Sign in to see your workspace.");
     } else {

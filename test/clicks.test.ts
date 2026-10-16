@@ -37,10 +37,36 @@ class MemoryAuthRepository implements AuthRepository {
     email: string;
     passwordHash: string;
   }): Promise<{ user: AuthUser; workspace: WorkspaceSummary }> {
-    const user = { id: this.nextId("user"), ...input };
+    const user = {
+      id: this.nextId("user"),
+      ...input,
+      isGuest: false,
+      guestExpiresAt: null,
+    };
     this.users.set(input.email, user);
     const workspace = this.addWorkspace(user.id, "Personal workspace", "OWNER");
     return { user, workspace };
+  }
+
+  async createGuestWorkspace(expiresAt: Date): Promise<{
+    user: AuthUser;
+    workspace: WorkspaceSummary;
+  }> {
+    const id = this.nextId("user");
+    const user: AuthUser = {
+      id,
+      email: `guest-${id}@guest.linkpulse.invalid`,
+      passwordHash: "test-guest-credential",
+      isGuest: true,
+      guestExpiresAt: expiresAt,
+    };
+    this.users.set(user.email, user);
+    const workspace = this.addWorkspace(user.id, "Guest workspace", "OWNER");
+    return { user, workspace };
+  }
+
+  async deleteExpiredGuestAccounts(): Promise<number> {
+    return 0;
   }
 
   async listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {

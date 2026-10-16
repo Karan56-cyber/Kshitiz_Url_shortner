@@ -70,10 +70,19 @@
                 </svg>
                 <span>LinkPulse</span>
               </div>
-              <h2 id="auth-title">Welcome back.</h2>
+              <h2 id="auth-title">Start with a real link.</h2>
               <p id="auth-intro" class="auth-intro">
-                Sign in to pick up where you left off.
+                Create a short link and check its traffic without setting up an account.
               </p>
+              <div class="guest-entry">
+                <button id="guest-start" class="primary-button guest-button" type="button">
+                  Continue as guest
+                </button>
+                <p class="guest-retention">
+                  Guest workspaces, links, and analytics are automatically deleted after 7 days.
+                </p>
+              </div>
+              <div class="auth-divider"><span>or use an account</span></div>
               <form id="auth-form" novalidate>
                 <label for="auth-email">Email address</label>
                 <input
@@ -153,6 +162,7 @@
               <div>
                 <h1>Your links, growing.</h1>
                 <p>Follow recorded visits across your workspace.</p>
+                <p id="guest-notice" class="guest-notice" role="status" hidden></p>
               </div>
               <span id="data-window" class="data-window">Last 30 days</span>
             </header>

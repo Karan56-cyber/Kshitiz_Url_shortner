@@ -4,6 +4,8 @@ export interface AuthUser {
   id: string;
   email: string;
   passwordHash: string;
+  isGuest: boolean;
+  guestExpiresAt: Date | null;
 }
 
 export interface WorkspaceSummary {
@@ -23,6 +25,11 @@ export interface AuthRepository {
     email: string;
     passwordHash: string;
   }): Promise<{ user: AuthUser; workspace: WorkspaceSummary }>;
+  createGuestWorkspace(expiresAt: Date): Promise<{
+    user: AuthUser;
+    workspace: WorkspaceSummary;
+  }>;
+  deleteExpiredGuestAccounts(before: Date, limit: number): Promise<number>;
   listWorkspaces(userId: string): Promise<WorkspaceSummary[]>;
   createWorkspace(userId: string, name: string): Promise<WorkspaceSummary>;
   findMembership(

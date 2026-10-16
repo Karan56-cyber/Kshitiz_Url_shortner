@@ -266,10 +266,45 @@ a {
 }
 
 .auth-intro {
-  margin: 12px 0 34px;
+  margin: 12px 0 20px;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.5;
+}
+
+.guest-entry {
+  display: grid;
+  gap: 10px;
+}
+
+.guest-button {
+  width: 100%;
+  min-height: 56px;
+  font-size: 15px;
+}
+
+.guest-retention {
+  margin: 0;
+  color: #485f50;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 21px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+  content: "";
 }
 
 #auth-form,
@@ -332,6 +367,11 @@ a {
 
 .auth-form-inner .primary-button {
   margin-top: 17px;
+}
+
+.auth-form-inner #guest-start {
+  min-height: 56px;
+  margin-top: 0;
 }
 
 .form-message {
@@ -504,6 +544,13 @@ a {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.guest-notice {
+  max-width: 58ch;
+  margin-top: 12px !important;
+  color: #485f50 !important;
+  font-size: 13px !important;
 }
 
 .data-window {
