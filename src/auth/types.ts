@@ -37,3 +37,17 @@ export interface AuthRepository {
     workspaceId: string,
   ): Promise<WorkspaceMembership | null>;
 }
+
+export interface PasswordResetRepository {
+  createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void>;
+  consumePasswordResetToken(input: {
+    tokenHash: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<boolean>;
+  deletePasswordResetToken(tokenHash: string): Promise<void>;
+}

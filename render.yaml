@@ -22,6 +22,18 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: PUBLIC_BASE_URL
+        value: https://short.remindkro.in
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
         sync: false
       - key: CLICK_EVENT_RETENTION_DAYS
         value: "90"

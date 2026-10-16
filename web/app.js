@@ -5,6 +5,7 @@ import {
   Rive,
   RuntimeLoader,
 } from "@rive-app/canvas";
+import { publicShortUrl } from "./public-short-url.js";
 
 const authView = document.querySelector("#auth-view");
 const dashboardView = document.querySelector("#dashboard-view");
@@ -18,6 +19,14 @@ const dashboardDemoNotice = document.querySelector("#dashboard-demo-notice");
 const guestRetention = document.querySelector(".guest-retention");
 const authSubmit = document.querySelector("#auth-submit");
 const authError = document.querySelector("#auth-error");
+const authEmailField = document.querySelector("#auth-email-field");
+const authPasswordField = document.querySelector("#auth-password-field");
+const authPassword = document.querySelector("#auth-password");
+const authPasswordLabel = document.querySelector("#auth-password-label");
+const resetConfirmField = document.querySelector("#reset-confirm-field");
+const resetPasswordConfirm = document.querySelector("#reset-password-confirm");
+const forgotPasswordButton = document.querySelector("#forgot-password");
+const passwordRequirement = document.querySelector("#password-requirement");
 const workspaceSelect = document.querySelector("#workspace-select");
 const workspaceRole = document.querySelector("#workspace-role");
 const guestNotice = document.querySelector("#guest-notice");
@@ -26,6 +35,10 @@ const linkCount = document.querySelector("#link-count");
 const ledgerEmpty = document.querySelector("#ledger-empty");
 const dashboardMessage = document.querySelector("#dashboard-message");
 const createMessage = document.querySelector("#create-message");
+const createdLinkResult = document.querySelector("#created-link-result");
+const createdShortLink = document.querySelector("#created-short-link");
+const copyCreatedLinkButton = document.querySelector("#copy-created-link");
+const createdLinkFeedback = document.querySelector("#created-link-feedback");
 const createLinkForm = document.querySelector("#create-link-form");
 const createLinkSubmit = document.querySelector("#create-link-submit");
 const clickTotal = document.querySelector("#click-total");
@@ -45,6 +58,8 @@ let selectedDays = 30;
 let riveInstance = null;
 let riveLoadFailed = false;
 let dashboardRequestSequence = 0;
+let passwordResetToken =
+  new URLSearchParams(window.location.hash.slice(1)).get("resetToken") ?? "";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 RuntimeLoader.setWasmUrl("/assets/rive.wasm");
@@ -58,20 +73,54 @@ function setMessage(element, message = "", success = false) {
 function setAuthMode(mode) {
   authMode = mode;
   const registering = mode === "register";
+  const requestingReset = mode === "reset-request";
+  const resettingPassword = mode === "reset";
+  const recovering = requestingReset || resettingPassword;
   authTitle.textContent = registering
     ? "Create your workspace."
-    : "Start with a real link.";
+    : requestingReset
+      ? "Find your way back."
+      : resettingPassword
+        ? "Choose a new password."
+        : "Start with a real link.";
   authIntro.textContent = registering
-    ? "Register to manage your links from a saved account."
-    : "Create a short link and check its traffic without setting up an account.";
-  authSubmit.textContent = registering ? "Create account" : "Sign in";
-  authModeToggle.textContent = registering
-    ? "Already have an account? Sign in"
-    : "Create an account";
-  document.querySelector("#auth-password").setAttribute(
+    ? "Register to keep your links and traffic together in a saved account."
+    : requestingReset
+      ? "Enter your account email and we’ll send a secure reset link."
+      : resettingPassword
+        ? "Choose a new password to get back to your workspace."
+        : "Create a short link and check its traffic without setting up an account.";
+  authSubmit.textContent = registering
+    ? "Create account"
+    : requestingReset
+      ? "Send reset link"
+      : resettingPassword
+        ? "Save new password"
+        : "Sign in";
+  authModeToggle.hidden = !recovering;
+  authModeToggle.textContent = recovering
+    ? "Back to sign in"
+    : registering
+      ? "Already have an account? Sign in"
+      : "Create an account";
+  authEmailField.hidden = resettingPassword;
+  authPasswordField.hidden = requestingReset;
+  authPassword.required = !requestingReset;
+  document.querySelector("#auth-email").required = !resettingPassword;
+  resetConfirmField.hidden = !resettingPassword;
+  resetPasswordConfirm.required = resettingPassword;
+  forgotPasswordButton.hidden = mode !== "login";
+  document.querySelector(".guest-entry").hidden = recovering;
+  document.querySelector(".auth-divider").hidden = recovering;
+  document.querySelector("#privacy-note").hidden = recovering;
+  passwordRequirement.hidden = !registering && !resettingPassword;
+  authPasswordLabel.textContent = resettingPassword ? "New password" : "Password";
+  authPassword.setAttribute(
     "autocomplete",
-    registering ? "new-password" : "current-password",
+    registering || resettingPassword ? "new-password" : "current-password",
   );
+  authPassword.placeholder = "At least 12 characters";
+  if (!resettingPassword) resetPasswordConfirm.value = "";
   setMessage(authError);
 }
 
@@ -186,6 +235,7 @@ function selectedWorkspace() {
 }
 
 function updateWorkspaceOptions() {
+  dashboardDemoNotice.hidden = !demoMode || isGuest;
   workspaceSelect.replaceChildren();
   for (const workspace of workspaces) {
     const option = document.createElement("option");
@@ -253,12 +303,54 @@ function makeElement(tag, className, text) {
   return element;
 }
 
-function safeHttpUrl(value) {
+function formatShortUrl(anchor, value) {
+  const url = new URL(value);
+  const path = url.pathname.replace(/\/+$/, "");
+  const lastSlash = path.lastIndexOf("/");
+  const originAndPath = makeElement(
+    "span",
+    "short-link-origin",
+    `${url.host}${path.slice(0, lastSlash + 1)}`,
+  );
+  const alias = makeElement("span", "short-link-alias", path.slice(lastSlash + 1));
+  anchor.replaceChildren(originAndPath, alias);
+  anchor.href = url.href;
+  anchor.title = url.href;
+  anchor.setAttribute("aria-label", url.href);
+}
+
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall back to the selection-based copy for browsers that deny clipboard access.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.readOnly = true;
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  let copied = false;
+  const previousFocus = document.activeElement;
   try {
-    const url = new URL(value, window.location.origin);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+    document.body.append(textarea);
+    textarea.select();
+    copied = document.execCommand("copy");
   } catch {
-    return null;
+    copied = false;
+  } finally {
+    textarea.remove();
+    if (previousFocus instanceof HTMLElement) {
+      previousFocus.focus({ preventScroll: true });
+    }
+  }
+  if (!copied) {
+    throw new Error("Clipboard access is unavailable. Select the short link to copy it.");
   }
 }
 
@@ -330,6 +422,7 @@ function renderChart(daily, days) {
 
   const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
   line.setAttribute("d", linePath);
+  line.setAttribute("pathLength", "1");
   line.setAttribute("class", "chart-line");
   chart.append(line);
 
@@ -370,10 +463,10 @@ function createTableCell(className, content) {
 function renderLinkRow(link, clickCounts) {
   const row = document.createElement("tr");
   const shortCell = createTableCell("short-link-cell");
-  const shortUrl = safeHttpUrl(link.shortUrl);
+  const shortUrl = publicShortUrl(link.alias, window.location);
   if (shortUrl) {
-    const anchor = makeElement("a", "", link.shortUrl);
-    anchor.href = shortUrl;
+    const anchor = makeElement("a", "short-link-display");
+    formatShortUrl(anchor, shortUrl);
     anchor.target = "_blank";
     anchor.rel = "noopener noreferrer";
     shortCell.append(anchor);
@@ -400,15 +493,20 @@ function renderLinkRow(link, clickCounts) {
   const actions = makeElement("div", "row-actions");
   const copyButton = makeElement("button", "row-action", "Copy link");
   copyButton.type = "button";
+  copyButton.disabled = !shortUrl;
   copyButton.addEventListener("click", async () => {
+    if (!shortUrl) return;
+    copyButton.disabled = true;
     try {
-      await navigator.clipboard.writeText(link.shortUrl);
+      await copyText(shortUrl);
       setMessage(dashboardMessage, "Short link copied.", true);
     } catch {
       setMessage(
         dashboardMessage,
         "Clipboard access is unavailable. Select the short link to copy it.",
       );
+    } finally {
+      copyButton.disabled = false;
     }
   });
   actions.append(copyButton);
@@ -516,8 +614,35 @@ async function loadDashboard() {
 }
 
 authModeToggle.addEventListener("click", () => {
+  if (authMode === "reset") {
+    passwordResetToken = "";
+    window.history.replaceState(null, "", window.location.pathname);
+  }
   setAuthMode(authMode === "login" ? "register" : "login");
   document.querySelector("#auth-email").focus();
+});
+
+forgotPasswordButton.addEventListener("click", () => {
+  setAuthMode("reset-request");
+  document.querySelector("#auth-email").focus();
+});
+
+document.querySelectorAll(".password-visibility").forEach((button) => {
+  button.addEventListener("click", () => {
+    const input = document.getElementById(button.dataset.passwordTarget);
+    const visible = input.type === "password";
+    input.type = visible ? "text" : "password";
+    button.textContent = visible ? "Hide" : "Show";
+    button.setAttribute("aria-pressed", String(visible));
+  });
+});
+
+authPassword.addEventListener("input", () => {
+  const complete = authPassword.value.length >= 12;
+  passwordRequirement.classList.toggle("is-complete", complete);
+  passwordRequirement.textContent = complete
+    ? "Password length looks good."
+    : "Use at least 12 characters.";
 });
 
 guestStartButton.addEventListener("click", async () => {
@@ -549,13 +674,49 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!authForm.reportValidity()) return;
   authSubmit.disabled = true;
+  const submitLabel = authSubmit.textContent;
+  authSubmit.textContent = "Working…";
+  authSubmit.setAttribute("aria-busy", "true");
   setMessage(authError);
   const form = new FormData(authForm);
   const payload = {
-    email: String(form.get("email")).trim(),
-    password: String(form.get("password")),
+    email: String(form.get("email") ?? "").trim(),
+    password: String(form.get("password") ?? ""),
   };
   try {
+    if (authMode === "reset-request") {
+      await apiRequest("/auth/password-reset/request", {
+        method: "POST",
+        body: { email: payload.email },
+      });
+      setMessage(
+        authError,
+        "If an account exists for that email, password reset instructions have been sent.",
+        true,
+      );
+      return;
+    }
+    if (authMode === "reset") {
+      if (!passwordResetToken) {
+        throw new Error("This reset link is invalid. Request a new one.");
+      }
+      if (payload.password !== resetPasswordConfirm.value) {
+        throw new Error("The passwords do not match. Check both fields and retry.");
+      }
+      await apiRequest("/auth/password-reset/confirm", {
+        method: "POST",
+        body: { token: passwordResetToken, password: payload.password },
+      });
+      passwordResetToken = "";
+      accessToken = "";
+      sessionStorage.removeItem("linkpulseAccessToken");
+      window.history.replaceState(null, "", window.location.pathname);
+      authForm.reset();
+      setAuthMode("login");
+      setMessage(authError, "Password updated. Sign in with your new password.", true);
+      document.querySelector("#auth-email").focus();
+      return;
+    }
     const account = await apiRequest(
       authMode === "register" ? "/auth/register" : "/auth/login",
       { method: "POST", body: payload },
@@ -581,6 +742,8 @@ authForm.addEventListener("submit", async (event) => {
     );
   } finally {
     authSubmit.disabled = false;
+    authSubmit.textContent = submitLabel;
+    authSubmit.removeAttribute("aria-busy");
   }
 });
 
@@ -614,6 +777,8 @@ createLinkForm.addEventListener("submit", async (event) => {
   createLinkSubmit.disabled = true;
   workspaceSelect.disabled = true;
   setMessage(createMessage);
+  createdLinkResult.hidden = true;
+  createdLinkFeedback.textContent = "";
 
   const workspaceId = currentWorkspaceId;
   const payload = {
@@ -634,13 +799,31 @@ createLinkForm.addEventListener("submit", async (event) => {
     createLinkForm.reset();
     document.querySelector("#link-expiry").value = "";
     document.querySelector("#link-max-clicks").value = "";
-    setMessage(createMessage, `Created ${link.shortUrl}`, true);
+    const shortUrl = publicShortUrl(link.alias, window.location);
+    if (!shortUrl) throw new Error("The server returned an invalid short link.");
+    formatShortUrl(createdShortLink, shortUrl);
+    copyCreatedLinkButton.dataset.copyUrl = shortUrl;
+    createdLinkResult.hidden = false;
+    setMessage(createMessage, "Your short link is ready.", true);
     await loadDashboard();
   } catch (error) {
     setMessage(createMessage, error.message);
   } finally {
     createLinkSubmit.disabled = false;
     workspaceSelect.disabled = false;
+  }
+});
+
+copyCreatedLinkButton.addEventListener("click", async () => {
+  copyCreatedLinkButton.disabled = true;
+  createdLinkFeedback.textContent = "";
+  try {
+    await copyText(copyCreatedLinkButton.dataset.copyUrl ?? createdShortLink.href);
+    createdLinkFeedback.textContent = "Copied";
+  } catch (error) {
+    createdLinkFeedback.textContent = error.message;
+  } finally {
+    copyCreatedLinkButton.disabled = false;
   }
 });
 
@@ -668,7 +851,19 @@ document.querySelector("#sign-out").addEventListener("click", () => {
   showAuth();
 });
 
+document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
+  link.addEventListener("click", () => {
+    document.querySelectorAll(".sidebar-nav .nav-link").forEach((item) => {
+      const current = item === link;
+      item.classList.toggle("is-current", current);
+      if (current) item.setAttribute("aria-current", "page");
+      else item.removeAttribute("aria-current");
+    });
+  });
+});
+
 async function initialize() {
+  if (passwordResetToken) setAuthMode("reset");
   try {
     const status = await apiRequest("/health/live");
     demoMode = status.demoMode === true;
@@ -684,7 +879,7 @@ async function initialize() {
       "The LinkPulse API is not reachable. Start it with `npm run dev` and refresh this page.",
     );
   }
-  if (!accessToken) {
+  if (passwordResetToken || !accessToken) {
     startLoginAnimation();
     return;
   }

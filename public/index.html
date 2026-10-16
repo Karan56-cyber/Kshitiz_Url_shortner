@@ -87,33 +87,73 @@
               </div>
               <div class="auth-divider"><span>or use an account</span></div>
               <form id="auth-form" novalidate>
-                <label for="auth-email">Email address</label>
-                <input
-                  id="auth-email"
-                  name="email"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="you@example.com"
-                  maxlength="254"
-                  required
-                >
-                <label for="auth-password">Password</label>
-                <input
-                  id="auth-password"
-                  name="password"
-                  type="password"
-                  autocomplete="current-password"
-                  placeholder="At least 12 characters"
-                  minlength="12"
-                  maxlength="128"
-                  required
-                >
+                <div id="auth-email-field" class="auth-field">
+                  <label for="auth-email">Email address</label>
+                  <input
+                    id="auth-email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="you@example.com"
+                    maxlength="254"
+                    required
+                  >
+                </div>
+                <div id="auth-password-field" class="auth-field">
+                  <div class="field-heading">
+                    <label id="auth-password-label" for="auth-password">Password</label>
+                  </div>
+                  <div class="password-input-wrap">
+                    <input
+                      id="auth-password"
+                      name="password"
+                      type="password"
+                      autocomplete="current-password"
+                      placeholder="At least 12 characters"
+                      minlength="12"
+                      maxlength="128"
+                      required
+                    >
+                    <button
+                      class="password-visibility"
+                      type="button"
+                      data-password-target="auth-password"
+                      aria-pressed="false"
+                    >Show</button>
+                  </div>
+                  <p id="password-requirement" class="password-requirement" hidden>
+                    Use at least 12 characters.
+                  </p>
+                </div>
+                <button id="forgot-password" class="forgot-password" type="button">
+                  Forgot password?
+                </button>
+                <div id="reset-confirm-field" class="auth-field" hidden>
+                  <div class="field-heading">
+                    <label for="reset-password-confirm">Confirm new password</label>
+                  </div>
+                  <div class="password-input-wrap">
+                    <input
+                      id="reset-password-confirm"
+                      type="password"
+                      autocomplete="new-password"
+                      minlength="12"
+                      maxlength="128"
+                    >
+                    <button
+                      class="password-visibility"
+                      type="button"
+                      data-password-target="reset-password-confirm"
+                      aria-pressed="false"
+                    >Show</button>
+                  </div>
+                </div>
                 <p id="auth-error" class="form-message" role="alert" hidden></p>
                 <button id="auth-submit" class="primary-button" type="submit">
                   Sign in
                 </button>
               </form>
-              <p class="privacy-note">
+              <p id="privacy-note" class="privacy-note">
                 No raw visitor IPs are stored. Bot visits are left out of analytics.
               </p>
             </div>
@@ -236,6 +276,18 @@
                 </div>
               </details>
               <p id="create-message" class="form-message" role="status" hidden></p>
+              <div id="created-link-result" class="created-link-result" hidden>
+                <a
+                  id="created-short-link"
+                  class="short-link-display"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                ></a>
+                <button id="copy-created-link" class="quiet-button" type="button">
+                  Copy link
+                </button>
+                <span id="created-link-feedback" class="copy-feedback" role="status"></span>
+              </div>
             </section>
 
             <section id="traffic" class="traffic-section" aria-labelledby="traffic-title">
