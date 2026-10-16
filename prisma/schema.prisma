@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum LinkStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id           String                @id @default(cuid())
+  email        String                @unique
+  passwordHash String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  memberships  WorkspaceMembership[]
+  createdLinks Link[]                @relation("LinkCreator")
+
+  @@map("users")
+}
+
+model Workspace {
+  id          String                @id @default(cuid())
+  name        String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  memberships WorkspaceMembership[]
+  campaigns   Campaign[]
+  links       Link[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMembership {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_memberships")
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links       Link[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("campaigns")
+}
+
+model Link {
+  id            String      @id @default(cuid())
+  workspaceId   String
+  campaignId    String?
+  createdById   String
+  alias         String      @unique
+  destinationUrl String     @db.Text
+  status        LinkStatus  @default(ACTIVE)
+  expiresAt     DateTime?
+  maxClicks     Int?
+  clickCount    Int         @default(0)
+  passwordHash  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign      Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdBy     User        @relation("LinkCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  clickEvents   ClickEvent[]
+
+  @@index([workspaceId, createdAt])
+  @@index([campaignId])
+  @@map("links")
+}
+
+model ClickEvent {
+  id          String   @id @default(cuid())
+  linkId      String
+  clickedAt   DateTime @default(now())
+  referrer    String?  @db.Text
+  userAgent   String?  @db.Text
+  ipHash      String?
+  countryCode String?  @db.Char(2)
+  isBot       Boolean  @default(false)
+  link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, clickedAt])
+  @@index([clickedAt])
+  @@map("click_events")
+}
