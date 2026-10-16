@@ -34,6 +34,13 @@ npm run db:deploy
 npm run dev
 ```
 
+The web app is served by the API at `http://localhost:3000/`. It uses same-origin
+requests and needs no browser API key or separate frontend environment variable.
+Sign in or register to create links, choose a workspace, and view persisted
+click analytics. The login screen loads the supplied Rive animation as a local
+asset; `npm run dev` and `npm run build` generate the bundled browser script and
+copy the Rive WebAssembly runtime into `public/assets/`.
+
 Run the click-event worker in another terminal:
 
 ```sh

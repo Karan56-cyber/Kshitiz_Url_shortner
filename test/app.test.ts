@@ -25,4 +25,27 @@ describe("health endpoints", () => {
     expect(response.json()).toEqual({ status: "not_ready" });
     await app.close();
   });
+
+  it("serves the login page, styles, and supplied Rive animation", async () => {
+    const app = buildApp({ logger: false });
+
+    const [page, styles, animation] = await Promise.all([
+      app.inject({ method: "GET", url: "/" }),
+      app.inject({ method: "GET", url: "/app.css" }),
+      app.inject({ method: "GET", url: "/assets/login.riv" }),
+    ]);
+
+    expect(page.statusCode).toBe(200);
+    expect(page.headers["content-type"]).toContain("text/html");
+    expect(page.body).toContain('id="auth-view"');
+    expect(page.body).toContain('src="/app.js"');
+    expect(page.headers["content-security-policy"]).toContain("'wasm-unsafe-eval'");
+    expect(page.headers["content-security-policy"]).toContain("connect-src 'self'");
+    expect(styles.statusCode).toBe(200);
+    expect(styles.headers["content-type"]).toContain("text/css");
+    expect(animation.statusCode).toBe(200);
+    expect(animation.headers["content-type"]).toContain("application/octet-stream");
+    expect(animation.rawPayload.length).toBeGreaterThan(0);
+    await app.close();
+  });
 });

@@ -10,6 +10,7 @@ import type {
 } from "./clicks/types.js";
 import { registerLinkRoutes } from "./links/routes.js";
 import type { LinkRepository } from "./links/types.js";
+import { registerFrontend } from "./ui.js";
 
 export interface AppOptions {
   database?: {
@@ -52,7 +53,17 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   });
   const database = options.database;
 
-  app.register(helmet);
+  app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        "script-src": ["'self'", "'wasm-unsafe-eval'"],
+        "connect-src": ["'self'"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+      },
+    },
+  });
+  registerFrontend(app);
   if (options.auth) {
     registerAuthentication(app, options.auth);
   }
