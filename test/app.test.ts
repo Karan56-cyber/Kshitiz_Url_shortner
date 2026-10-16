@@ -38,6 +38,10 @@ describe("health endpoints", () => {
     expect(page.statusCode).toBe(200);
     expect(page.headers["content-type"]).toContain("text/html");
     expect(page.body).toContain('id="auth-view"');
+    expect(page.body).toContain('id="forgot-password"');
+    expect(page.body).toContain('id="reset-password-confirm"');
+    expect(page.body).toContain('id="created-link-result"');
+    expect(page.body).toContain('id="copy-created-link"');
     expect(page.body).toContain('src="/app.js"');
     expect(page.headers["content-security-policy"]).toContain("'wasm-unsafe-eval'");
     expect(page.headers["content-security-policy"]).toContain("connect-src 'self'");

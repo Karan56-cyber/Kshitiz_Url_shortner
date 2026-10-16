@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import { buildApp } from "./app.js";
 import { PrismaAuthRepository } from "./auth/prisma-repository.js";
+import { SmtpPasswordResetMailer } from "./auth/password-reset-mailer.js";
 import { PrismaClickRepository } from "./clicks/prisma-repository.js";
 import { enqueueClickEvent } from "./clicks/queue.js";
 import { ClickEventWorker } from "./clicks/worker.js";
@@ -108,6 +109,24 @@ async function start(): Promise<void> {
     },
     auth: {
       repository: authRepository,
+      passwordResetRepository: authRepository,
+      ...(environment.SMTP_HOST &&
+      environment.SMTP_PORT &&
+      environment.SMTP_USER &&
+      environment.SMTP_PASS &&
+      environment.SMTP_FROM
+        ? {
+            passwordResetMailer: new SmtpPasswordResetMailer({
+              host: environment.SMTP_HOST,
+              port: environment.SMTP_PORT,
+              secure: environment.SMTP_SECURE,
+              user: environment.SMTP_USER,
+              password: environment.SMTP_PASS,
+              from: environment.SMTP_FROM,
+            }),
+          }
+        : {}),
+      publicBaseUrl: environment.PUBLIC_BASE_URL,
       jwtSecret: environment.JWT_SECRET,
       redis,
     },

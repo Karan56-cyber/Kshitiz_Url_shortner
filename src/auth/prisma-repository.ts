@@ -4,6 +4,7 @@ import { DuplicateEmailError } from "./errors.js";
 import type {
   AuthRepository,
   AuthUser,
+  PasswordResetRepository,
   WorkspaceSummary,
 } from "./types.js";
 
@@ -16,7 +17,7 @@ function isUniqueConstraintError(error: unknown): boolean {
   );
 }
 
-export class PrismaAuthRepository implements AuthRepository {
+export class PrismaAuthRepository implements AuthRepository, PasswordResetRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   findUserByEmail(email: string): Promise<AuthUser | null> {
@@ -30,6 +31,62 @@ export class PrismaAuthRepository implements AuthRepository {
         guestExpiresAt: true,
       },
     });
+  }
+
+  async createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.deleteMany({
+        where: {
+          OR: [
+            { userId: input.userId },
+            { expiresAt: { lte: now } },
+          ],
+        },
+      }),
+      this.prisma.passwordResetToken.create({ data: input }),
+    ]);
+  }
+
+  async consumePasswordResetToken(input: {
+    tokenHash: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<boolean> {
+    return this.prisma.$transaction(async (transaction) => {
+      const token = await transaction.passwordResetToken.findUnique({
+        where: { tokenHash: input.tokenHash },
+        select: { id: true, userId: true, expiresAt: true, usedAt: true },
+      });
+      if (!token || token.usedAt || token.expiresAt <= input.now) return false;
+
+      const claimed = await transaction.passwordResetToken.updateMany({
+        where: {
+          id: token.id,
+          usedAt: null,
+          expiresAt: { gt: input.now },
+        },
+        data: { usedAt: input.now },
+      });
+      if (claimed.count !== 1) return false;
+
+      await transaction.user.update({
+        where: { id: token.userId },
+        data: { passwordHash: input.passwordHash },
+      });
+      await transaction.passwordResetToken.deleteMany({
+        where: { userId: token.userId },
+      });
+      return true;
+    });
+  }
+
+  async deletePasswordResetToken(tokenHash: string): Promise<void> {
+    await this.prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
   }
 
   async createUserWithPersonalWorkspace(input: {

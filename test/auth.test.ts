@@ -1,23 +1,63 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import type {
   AuthRepository,
   AuthUser,
   WorkspaceMembership,
   WorkspaceRole,
   WorkspaceSummary,
+  PasswordResetRepository,
 } from "../src/auth/types.js";
+import type { PasswordResetMailer } from "../src/auth/password-reset-mailer.js";
 import { DuplicateEmailError } from "../src/auth/errors.js";
 import { authenticate, requireWorkspaceRole } from "../src/auth/routes.js";
 import { buildApp } from "../src/app.js";
 
-class InMemoryAuthRepository implements AuthRepository {
+class InMemoryAuthRepository implements AuthRepository, PasswordResetRepository {
   private sequence = 0;
   private readonly users = new Map<string, AuthUser>();
   private readonly workspaces = new Map<string, WorkspaceSummary[]>();
   private readonly memberships = new Map<string, WorkspaceRole>();
+  private readonly resetTokens = new Map<
+    string,
+    { userId: string; expiresAt: Date; usedAt: Date | null }
+  >();
 
   async findUserByEmail(email: string): Promise<AuthUser | null> {
     return this.users.get(email) ?? null;
+  }
+
+  async createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    for (const [tokenHash, token] of this.resetTokens) {
+      if (token.userId === input.userId) this.resetTokens.delete(tokenHash);
+    }
+    this.resetTokens.set(input.tokenHash, {
+      userId: input.userId,
+      expiresAt: input.expiresAt,
+      usedAt: null,
+    });
+  }
+
+  async consumePasswordResetToken(input: {
+    tokenHash: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<boolean> {
+    const token = this.resetTokens.get(input.tokenHash);
+    if (!token || token.usedAt || token.expiresAt <= input.now) return false;
+    token.usedAt = input.now;
+    const user = [...this.users.values()].find(({ id }) => id === token.userId);
+    if (!user) return false;
+    user.passwordHash = input.passwordHash;
+    return true;
+  }
+
+  async deletePasswordResetToken(tokenHash: string): Promise<void> {
+    this.resetTokens.delete(tokenHash);
   }
 
   async createUserWithPersonalWorkspace(input: {
@@ -124,10 +164,16 @@ describe("authentication and workspace access", () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
   });
 
-  function createApp(repository = new InMemoryAuthRepository()) {
+  function createApp(
+    repository = new InMemoryAuthRepository(),
+    passwordResetMailer?: PasswordResetMailer,
+  ) {
     const app = buildApp({
       auth: {
         repository,
+        passwordResetRepository: repository,
+        ...(passwordResetMailer ? { passwordResetMailer } : {}),
+        publicBaseUrl: "https://short.remindkro.in",
         jwtSecret: "test-secret-that-is-at-least-thirty-two-characters",
       },
       logger: false,
@@ -215,6 +261,122 @@ describe("authentication and workspace access", () => {
       user: { email: "user@example.com" },
     });
     expect(response.json().accessToken).toEqual(expect.any(String));
+  });
+
+  it("sends a non-enumerating reset email and accepts its token once", async () => {
+    const deliveries: Array<{ email: string; resetUrl: string }> = [];
+    const { app } = createApp(undefined, {
+      async sendPasswordReset(email, resetUrl) {
+        deliveries.push({ email, resetUrl });
+      },
+    });
+    await register(app);
+
+    const existing = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/request",
+      payload: { email: " USER@example.com " },
+    });
+    const missing = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/request",
+      payload: { email: "missing@example.com" },
+    });
+    expect(existing.statusCode).toBe(202);
+    expect(existing.json()).toEqual(missing.json());
+    await vi.waitFor(() => expect(deliveries).toHaveLength(1));
+    expect(deliveries).toHaveLength(1);
+    expect(deliveries[0].email).toBe("user@example.com");
+
+    const token = new URLSearchParams(
+      new URL(deliveries[0].resetUrl).hash.slice(1),
+    ).get("resetToken");
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const reset = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/confirm",
+      payload: { token, password: "a stronger replacement password 123" },
+    });
+    expect(reset.statusCode).toBe(200);
+
+    const reused = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/confirm",
+      payload: { token, password: "another replacement password 123" },
+    });
+    expect(reused.statusCode).toBe(400);
+
+    const oldPassword = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "user@example.com", password: "long enough password 123" },
+    });
+    const newPassword = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "user@example.com",
+        password: "a stronger replacement password 123",
+      },
+    });
+    expect(oldPassword.statusCode).toBe(401);
+    expect(newPassword.statusCode).toBe(200);
+  });
+
+  it("reports password reset as unavailable when SMTP is not configured", async () => {
+    const { app } = createApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/request",
+      payload: { email: "user@example.com" },
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().message).toContain("not configured");
+  });
+
+  it("rejects expired password-reset tokens", async () => {
+    const repository = new InMemoryAuthRepository();
+    const { app } = createApp(repository);
+    const account = await register(app);
+    const token = "expired-reset-token".padEnd(43, "x");
+    await repository.createPasswordResetToken({
+      userId: account.user.id,
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      expiresAt: new Date(Date.now() - 1),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/confirm",
+      payload: { token, password: "a fresh long password for reset 123" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toContain("expired");
+  });
+
+  it("keeps reset requests non-enumerating when email delivery fails", async () => {
+    let attemptedUrl = "";
+    const { app } = createApp(undefined, {
+      async sendPasswordReset(_email, resetUrl) {
+        attemptedUrl = resetUrl;
+        throw new Error("SMTP unavailable");
+      },
+    });
+    await register(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/request",
+      payload: { email: "user@example.com" },
+    });
+    const token = new URLSearchParams(new URL(attemptedUrl).hash.slice(1))
+      .get("resetToken");
+    const reset = await app.inject({
+      method: "POST",
+      url: "/auth/password-reset/confirm",
+      payload: { token, password: "replacement password long enough 123" },
+    });
+    expect(response.statusCode).toBe(202);
+    expect(reset.statusCode).toBe(400);
   });
 
   it("starts a temporary guest workspace with a scoped token and scheduled expiry", async () => {

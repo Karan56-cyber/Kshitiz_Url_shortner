@@ -3,7 +3,8 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import type Redis from "ioredis";
 import { registerAuthentication } from "./auth/routes.js";
-import type { AuthRepository } from "./auth/types.js";
+import type { PasswordResetMailer } from "./auth/password-reset-mailer.js";
+import type { AuthRepository, PasswordResetRepository } from "./auth/types.js";
 import { registerAnalyticsRoutes } from "./clicks/routes.js";
 import type {
   AnalyticsRepository,
@@ -20,6 +21,9 @@ export interface AppOptions {
   };
   auth?: {
     repository: AuthRepository;
+    passwordResetRepository?: PasswordResetRepository;
+    passwordResetMailer?: PasswordResetMailer;
+    publicBaseUrl?: string;
     jwtSecret: string;
     redis?: Redis;
   };

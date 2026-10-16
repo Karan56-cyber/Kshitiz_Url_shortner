@@ -66,6 +66,11 @@ The login screen loads the supplied Rive animation as a local asset; `npm run de
 and `npm run build` generate the bundled browser script and copy the Rive WebAssembly
 runtime into `public/assets/`.
 
+Password recovery is available when SMTP is configured in `.env` using
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
+Reset tokens are stored only as SHA-256 hashes, expire after 30 minutes, and can be
+used once. Password-reset requests do not reveal whether an email is registered.
+
 Run the click-event worker in another terminal:
 
 ```sh
@@ -93,6 +98,12 @@ origins before confirming hosted resources.
 - `POST /auth/register` creates a normalized email account, a personal workspace,
   and an OWNER membership atomically. Passwords must be 12–128 characters.
 - `POST /auth/login` returns a signed 15-minute Bearer access token.
+- `POST /auth/password-reset/request` emails a 30-minute, single-use reset link
+  when SMTP is configured. It returns the same response whether or not the email
+  exists; `POST /auth/password-reset/confirm` accepts the token and a new password.
+- Password-reset tokens are random, stored only as SHA-256 hashes, and consumed
+  atomically with the password update. Sessions issued before a reset expire on
+  their normal 15-minute token schedule.
 - `GET /auth/me`, `GET /workspaces`, and `POST /workspaces` require that token.
 - Register/login are limited to five requests per IP per minute; guest workspace
   creation is limited to three per IP per hour. The API uses Redis for shared

@@ -200,7 +200,7 @@ describe("workspace link lifecycle and redirects", () => {
       links: {
         repository,
         authRepository,
-        publicBaseUrl: "https://sho.rt",
+        publicBaseUrl: "https://short.remindkro.in",
         generateAlias: () => "generated1",
       },
       logger: false,
@@ -245,7 +245,7 @@ describe("workspace link lifecycle and redirects", () => {
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({
       alias: "private-link",
-      shortUrl: "https://sho.rt/private-link",
+      shortUrl: "https://short.remindkro.in/private-link",
       passwordProtected: true,
       maxClicks: 4,
       clickCount: 0,
@@ -284,7 +284,7 @@ describe("workspace link lifecycle and redirects", () => {
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({
       alias: "guest-link",
-      shortUrl: "https://sho.rt/guest-link",
+      shortUrl: "https://short.remindkro.in/guest-link",
     });
     expect(listed.statusCode).toBe(200);
     expect(listed.json()).toHaveLength(1);
@@ -517,7 +517,7 @@ describe("workspace link lifecycle and redirects", () => {
       links: {
         repository,
         authRepository,
-        publicBaseUrl: "https://sho.rt",
+        publicBaseUrl: "https://short.remindkro.in",
         onClickAccepted: (event) => {
           acceptedEvents.push(event);
           throw new Error("Redis unavailable");

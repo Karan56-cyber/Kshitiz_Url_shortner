@@ -11,12 +11,17 @@ Render API can run the click worker in-process for a single-service deployment.
    use the settings in `render.yaml`. Review the selected plan and region before
    creating the service.
 2. Set `DATABASE_URL` and `REDIS_URL` to your managed PostgreSQL and Redis
-   connection URLs, and set `PUBLIC_BASE_URL` to the Vercel production URL. Render
-   generates `JWT_SECRET`; `EMBEDDED_WORKER=true` enables click processing and guest
-   cleanup in the API process.
-3. The start command deploys Prisma migrations before launching the API. Its
+   connection URLs. Set `PUBLIC_BASE_URL` to `https://short.remindkro.in`; this is
+   the public short-link domain, not the Render API origin. Render generates
+   `JWT_SECRET`; `EMBEDDED_WORKER=true` enables click processing and guest cleanup
+   in the API process.
+3. To enable password recovery, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
+   `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in Render's environment. Without these
+   settings, normal sign-in continues to work but password-reset requests return a
+   clear service-unavailable message.
+4. The start command deploys Prisma migrations before launching the API. Its
    liveness endpoint is `/health/live`; `/health/ready` checks PostgreSQL and Redis.
-4. Note the Render service's public HTTPS origin for the Vercel configuration.
+5. Note the Render service's public HTTPS origin for the Vercel configuration.
 
 ## Deploy the Vercel frontend
 
@@ -24,18 +29,19 @@ Render API can run the click worker in-process for a single-service deployment.
    `pantkartik-linkpulse-dashboard` branch.
 2. Keep the repository root as the project root. `vercel.json` installs dependencies,
    builds the browser bundle and local Rive WASM asset, and publishes `public/`.
-3. Set the Render API origin in `vercel.json` to your deployed Render service URL,
-   then redeploy. Vercel serves static files first and rewrites API and short-link
-   routes to the configured backend.
-4. Copy the resulting Vercel production URL into the Render API's `PUBLIC_BASE_URL`
-   environment variable and trigger a Render deploy if it was not already set.
+3. Add `short.remindkro.in` as a Vercel domain and configure its DNS records as
+   instructed by Vercel. The Vercel rewrites proxy API and short-link requests to
+   `https://linkpulse-api-0w93.onrender.com`; the Render URL is an internal service
+   origin and must not be used as the public short-link base.
 
 ## Verify deployment
 
-- Open the Vercel URL and start a guest session.
+- Open `https://short.remindkro.in` and start a guest session.
+- With SMTP configured, test password recovery using an account you can access;
+  reset links expire after 30 minutes and are single-use.
 - Create a short link and verify its share URL uses the Vercel origin.
-- Open that short URL in a private window; it should redirect through the Vercel
-  rewrite to the Render API.
+- Verify the share URL starts with `https://short.remindkro.in/`, then open it in
+  a private window; it should redirect through the Vercel rewrite to the Render API.
 - Visit `/health/live` and `/health/ready` on the Render service; readiness checks
   PostgreSQL and Redis.
 - Confirm the embedded click worker is running and monitor API logs and the
