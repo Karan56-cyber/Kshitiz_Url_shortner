@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import { buildApp } from "./app.js";
 import { PrismaAuthRepository } from "./auth/prisma-repository.js";
+import { PrismaLinkRepository } from "./links/prisma-repository.js";
 import { loadEnvironment } from "./config/env.js";
 import { createPrismaClient } from "./lib/prisma.js";
 
@@ -11,6 +12,7 @@ async function start(): Promise<void> {
     lazyConnect: true,
     maxRetriesPerRequest: 2,
   });
+  const authRepository = new PrismaAuthRepository(prisma);
   const app = buildApp({
     database: {
       checkConnection: async () => {
@@ -19,8 +21,14 @@ async function start(): Promise<void> {
       disconnect: () => prisma.$disconnect(),
     },
     auth: {
-      repository: new PrismaAuthRepository(prisma),
+      repository: authRepository,
       jwtSecret: environment.JWT_SECRET,
+      redis,
+    },
+    links: {
+      repository: new PrismaLinkRepository(prisma),
+      authRepository,
+      publicBaseUrl: environment.PUBLIC_BASE_URL,
       redis,
     },
   });
