@@ -9,6 +9,11 @@ const environmentSchema = z.object({
   REDIS_URL: z.string().url(),
   PUBLIC_BASE_URL: z.string().url(),
   CLICK_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+  EMBEDDED_WORKER: z
+    .string()
+    .optional()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

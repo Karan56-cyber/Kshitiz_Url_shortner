@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/auth/:path*",
+      "destination": "https://linkpulse-api.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/workspaces/:path*",
+      "destination": "https://linkpulse-api.onrender.com/workspaces/:path*"
+    },
+    {
+      "source": "/health/:path*",
+      "destination": "https://linkpulse-api.onrender.com/health/:path*"
+    },
+    {
+      "source": "/:alias((?!assets/|app\\.css|app\\.js|favicon\\.ico).+)",
+      "destination": "https://linkpulse-api.onrender.com/:alias"
+    }
+  ]
+}

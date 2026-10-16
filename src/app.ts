@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import type Redis from "ioredis";
 import { registerAuthentication } from "./auth/routes.js";
@@ -53,11 +54,17 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   });
   const database = options.database;
 
+  app.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "x-link-password"],
+  });
+
   app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
         "script-src": ["'self'", "'wasm-unsafe-eval'"],
-        "connect-src": ["'self'"],
+        "connect-src": ["'self'", "*"],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
       },

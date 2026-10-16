@@ -1,0 +1,29 @@
+services:
+  # LinkPulse Fastify API Web Service
+  - type: web
+    name: linkpulse-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm run db:deploy && npm run start
+    healthCheckPath: /health/live
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: CLICK_EVENT_RETENTION_DAYS
+        value: "90"
+      - key: EMBEDDED_WORKER
+        value: "true"
