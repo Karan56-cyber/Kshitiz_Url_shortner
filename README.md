@@ -56,6 +56,10 @@ logged; the visitor still receives the accepted redirect, so analytics for that
 request may be lost if Redis is unavailable.
 
 The liveness endpoint is `GET /health/live`; readiness is `GET /health/ready`.
+For a Vercel frontend with a Render API, PostgreSQL, Redis, and worker, see
+[docs/deployment.md](docs/deployment.md). The repository includes a Render Blueprint
+and Vercel project configuration; review provider plans and set the deployment
+origins before confirming hosted resources.
 
 ## Identity and workspaces
 
