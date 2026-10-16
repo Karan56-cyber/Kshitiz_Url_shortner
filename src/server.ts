@@ -14,6 +14,7 @@ async function start(): Promise<void> {
     const store = new DemoStore();
     const app = buildApp({
       demoMode: true,
+      isDevelopment: environment.NODE_ENV !== "production",
       database: {
         checkConnection: async () => {},
         disconnect: async () => {},
@@ -74,6 +75,7 @@ async function start(): Promise<void> {
   const authRepository = new PrismaAuthRepository(prisma);
   const clickRepository = new PrismaClickRepository(prisma);
   const app = buildApp({
+    isDevelopment: environment.NODE_ENV !== "production",
     database: {
       checkConnection: async () => {
         await prisma.$queryRaw`SELECT 1`;

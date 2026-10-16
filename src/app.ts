@@ -23,6 +23,7 @@ export interface AppOptions {
     redis?: Redis;
   };
   demoMode?: boolean;
+  isDevelopment?: boolean;
   analytics?: {
     repository: AnalyticsRepository;
     authRepository: AuthRepository;
@@ -53,14 +54,17 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         },
   });
   const database = options.database;
+  const isDevelopment = options.isDevelopment ?? process.env.NODE_ENV !== "production";
 
   app.register(helmet, {
+    ...(isDevelopment ? { hsts: false } : {}),
     contentSecurityPolicy: {
       directives: {
         "script-src": ["'self'", "'wasm-unsafe-eval'"],
         "connect-src": ["'self'"],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
+        "upgrade-insecure-requests": isDevelopment ? null : [],
       },
     },
   });

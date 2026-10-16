@@ -41,11 +41,26 @@ describe("health endpoints", () => {
     expect(page.body).toContain('src="/app.js"');
     expect(page.headers["content-security-policy"]).toContain("'wasm-unsafe-eval'");
     expect(page.headers["content-security-policy"]).toContain("connect-src 'self'");
+    expect(page.headers["content-security-policy"]).not.toContain(
+      "upgrade-insecure-requests",
+    );
+    expect(page.headers["strict-transport-security"]).toBeUndefined();
     expect(styles.statusCode).toBe(200);
     expect(styles.headers["content-type"]).toContain("text/css");
     expect(animation.statusCode).toBe(200);
     expect(animation.headers["content-type"]).toContain("application/octet-stream");
     expect(animation.rawPayload.length).toBeGreaterThan(0);
+    await app.close();
+  });
+
+  it("keeps HTTPS upgrade and HSTS headers enabled in production", async () => {
+    const app = buildApp({ isDevelopment: false, logger: false });
+    const response = await app.inject({ method: "GET", url: "/health/live" });
+
+    expect(response.headers["content-security-policy"]).toContain(
+      "upgrade-insecure-requests",
+    );
+    expect(response.headers["strict-transport-security"]).toContain("max-age=");
     await app.close();
   });
 });
