@@ -148,7 +148,8 @@ async function apiRequest(path, options = {}) {
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   let response;
   try {
-    response = await fetch(path, {
+    const url = path.startsWith("http") ? path : `${(window.__API_URL__ || "").replace(/\/+$/, "")}${path}`;
+    response = await fetch(url, {
       ...options,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),

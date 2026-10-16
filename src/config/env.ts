@@ -11,6 +11,11 @@ const environmentSchema = z.object({
   REDIS_URL: z.string().url().optional(),
   PUBLIC_BASE_URL: z.string().url(),
   CLICK_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+  EMBEDDED_WORKER: z
+    .string()
+    .optional()
+    .transform((value) => value === "true" || value === "1")
+    .default("false"),
 }).superRefine((environment, context) => {
   if (environment.DEMO_MODE && environment.NODE_ENV === "production") {
     context.addIssue({

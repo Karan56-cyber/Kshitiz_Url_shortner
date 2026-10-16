@@ -44,4 +44,22 @@ describe("environment loading", () => {
     });
     expect(environment.DEMO_MODE).toBe(false);
   });
+
+  it("keeps the embedded worker opt-in and accepts Render's true value", () => {
+    const demoEnvironment = loadEnvironment({
+      ...baseEnvironment,
+      DEMO_MODE: "true",
+    });
+    expect(demoEnvironment.EMBEDDED_WORKER).toBe(false);
+
+    const productionEnvironment = loadEnvironment({
+      ...baseEnvironment,
+      NODE_ENV: "production",
+      DEMO_MODE: "false",
+      DATABASE_URL: "postgresql://user:password@localhost:5432/linkpulse",
+      REDIS_URL: "redis://localhost:6379",
+      EMBEDDED_WORKER: "true",
+    });
+    expect(productionEnvironment.EMBEDDED_WORKER).toBe(true);
+  });
 });
