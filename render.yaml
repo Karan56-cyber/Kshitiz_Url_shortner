@@ -6,7 +6,7 @@ services:
     plan: free
     region: singapore
     buildCommand: npm install && npm run build
-    startCommand: npm run db:deploy && npm run start
+    startCommand: npm run db:deploy && node dist/server.js
     healthCheckPath: /health/live
     envVars:
       - key: NODE_ENV
@@ -14,7 +14,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: PORT
-        value: 3000
+        value: 10000
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL

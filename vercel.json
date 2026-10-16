@@ -1,24 +1,14 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "installCommand": "npm install",
   "buildCommand": "npm run build:web",
   "outputDirectory": "public",
-  "cleanUrls": true,
+  "cleanUrls": false,
   "rewrites": [
-    {
-      "source": "/auth/:path*",
-      "destination": "https://linkpulse-api.onrender.com/auth/:path*"
-    },
-    {
-      "source": "/workspaces/:path*",
-      "destination": "https://linkpulse-api.onrender.com/workspaces/:path*"
-    },
-    {
-      "source": "/health/:path*",
-      "destination": "https://linkpulse-api.onrender.com/health/:path*"
-    },
-    {
-      "source": "/:alias((?!assets/|app\\.css|app\\.js|favicon\\.ico).+)",
-      "destination": "https://linkpulse-api.onrender.com/:alias"
-    }
+    { "source": "/auth/(.*)",        "destination": "https://linkpulse-api.onrender.com/auth/$1" },
+    { "source": "/workspaces/(.*)",  "destination": "https://linkpulse-api.onrender.com/workspaces/$1" },
+    { "source": "/health/(.*)",      "destination": "https://linkpulse-api.onrender.com/health/$1" },
+    { "source": "/:alias([a-zA-Z0-9_-]{4,})", "destination": "https://linkpulse-api.onrender.com/:alias" }
   ]
 }
