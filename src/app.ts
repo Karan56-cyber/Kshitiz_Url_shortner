@@ -1,21 +1,41 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import helmet from "@fastify/helmet";
+import type Redis from "ioredis";
+import { registerAuthentication } from "./auth/routes.js";
+import type { AuthRepository } from "./auth/types.js";
 
 export interface AppOptions {
   database?: {
     checkConnection(): Promise<void>;
     disconnect(): Promise<void>;
   };
+  auth?: {
+    repository: AuthRepository;
+    jwtSecret: string;
+    redis?: Redis;
+  };
   logger?: boolean;
 }
 
 export function buildApp(options: AppOptions = {}): FastifyInstance {
   const app = Fastify({
-    logger: options.logger ?? true,
+    logger: options.logger === false
+      ? false
+      : {
+          redact: [
+            "req.headers.authorization",
+            "req.body.password",
+            "req.body.passwordHash",
+            "res.headers.authorization",
+          ],
+        },
   });
   const database = options.database;
 
   app.register(helmet);
+  if (options.auth) {
+    registerAuthentication(app, options.auth);
+  }
 
   app.get("/health/live", async () => ({ status: "ok" }));
 
@@ -26,6 +46,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     try {
       await database.checkConnection();
+      if (options.auth?.redis) {
+        await options.auth.redis.ping();
+      }
       return { status: "ready" };
     } catch (error) {
       app.log.error({ err: error }, "Readiness check failed");
@@ -45,6 +68,29 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       });
     }
 
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      error.statusCode === 401
+    ) {
+      return reply.code(401).send({
+        error: "Unauthorized",
+        message: "Authentication required",
+      });
+    }
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      error.statusCode === 429
+    ) {
+      return reply.code(429).send({
+        error: "Too Many Requests",
+        message: "Rate limit exceeded",
+      });
+    }
+
     request.log.error({ err: error }, "Unhandled request error");
     return reply.code(500).send({
       error: "Internal Server Error",
@@ -55,6 +101,13 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   app.addHook("onClose", async () => {
     if (database) {
       await database.disconnect();
+    }
+    if (options.auth?.redis) {
+      if (options.auth.redis.status === "ready") {
+        await options.auth.redis.quit();
+      } else {
+        options.auth.redis.disconnect();
+      }
     }
   });
 

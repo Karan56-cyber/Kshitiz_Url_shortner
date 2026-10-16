@@ -1,10 +1,16 @@
+import Redis from "ioredis";
 import { buildApp } from "./app.js";
+import { PrismaAuthRepository } from "./auth/prisma-repository.js";
 import { loadEnvironment } from "./config/env.js";
 import { createPrismaClient } from "./lib/prisma.js";
 
 async function start(): Promise<void> {
   const environment = loadEnvironment();
   const prisma = createPrismaClient(environment.DATABASE_URL);
+  const redis = new Redis(environment.REDIS_URL, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+  });
   const app = buildApp({
     database: {
       checkConnection: async () => {
@@ -12,10 +18,16 @@ async function start(): Promise<void> {
       },
       disconnect: () => prisma.$disconnect(),
     },
+    auth: {
+      repository: new PrismaAuthRepository(prisma),
+      jwtSecret: environment.JWT_SECRET,
+      redis,
+    },
   });
 
   try {
     await prisma.$connect();
+    await redis.connect();
     await app.listen({ host: environment.HOST, port: environment.PORT });
   } catch (error) {
     app.log.error({ err: error }, "Failed to start LinkPulse API");

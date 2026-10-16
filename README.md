@@ -36,6 +36,19 @@ npm run dev
 
 The liveness endpoint is `GET /health/live`; readiness is `GET /health/ready`.
 
+## Identity and workspaces
+
+- `POST /auth/register` creates a normalized email account, a personal workspace,
+  and an OWNER membership atomically. Passwords must be 12–128 characters.
+- `POST /auth/login` returns a signed 15-minute Bearer access token.
+- `GET /auth/me`, `GET /workspaces`, and `POST /workspaces` require that token.
+- Authentication endpoints are limited to five requests per IP per minute. The
+  API uses Redis for shared rate-limit state across instances.
+
+Use the reusable workspace membership and role pre-handler for workspace-scoped
+routes; never trust a workspace ID supplied by a caller without checking membership.
+See [docs/architecture.md](docs/architecture.md) for implementation boundaries.
+
 ## Validation
 
 ```sh

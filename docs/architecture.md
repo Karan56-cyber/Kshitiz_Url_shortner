@@ -3,7 +3,7 @@
 ## Request and data flow
 
 ```text
-User -> API authentication -> workspace authorization
+User -> registration/login -> signed access token -> workspace authorization
      -> validate destination and link rules -> persist Link -> return short URL
 
 Visitor -> GET /:alias -> load link -> evaluate status / expiry / click cap
@@ -19,7 +19,10 @@ Admin -> disable abusive Link -> redirect service rejects subsequent requests
 - **HTTP/API layer:** Fastify routes, request validation, authentication hooks, and
   stable error responses. Route handlers delegate business behavior to services.
 - **Identity and access:** Users belong to workspaces through role-bearing memberships.
-  Every management and analytics query is scoped to a workspace the caller can access.
+  Registration creates the user, personal workspace, and OWNER membership atomically.
+  Passwords use scrypt hashes; API access tokens are short-lived and signed. Every
+  management and analytics query is scoped to a workspace the caller can access.
+  Authentication rate limits use Redis so limits are shared across API instances.
 - **Link service:** Owns alias uniqueness, destination validation, link lifecycle, and
   rule evaluation. Database constraints are the final authority for alias uniqueness.
 - **Redirect path:** Performs only the reads and rule checks required to decide the
@@ -61,7 +64,7 @@ to avoid allowing requests past the configured cap.
 1. **Foundation:** API runtime, validated configuration, health checks, database schema,
    local PostgreSQL/Redis, architecture docs, and automated checks.
 2. **Authentication/workspaces:** registration/login, secure password hashing, signed
-   access tokens, workspace creation, and role-based access checks.
+   access tokens, workspace creation, and role-based access checks (implemented).
 3. **Link lifecycle:** create/list/update/disable links; aliases; URL validation; expiry,
    click caps, and password protection; redirect behavior and link-creation limits.
 4. **Tracking/analytics:** bot filtering, durable asynchronous click ingestion, safe
