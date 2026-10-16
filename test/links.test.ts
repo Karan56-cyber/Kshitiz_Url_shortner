@@ -451,7 +451,13 @@ describe("workspace link lifecycle and redirects", () => {
   it("enforces click caps under concurrent redirects and exposes an analytics hook", async () => {
     const authRepository = new InMemoryAuthRepository();
     const repository = new InMemoryLinkRepository();
-    const acceptedEvents: string[] = [];
+    const acceptedEvents: Array<{
+      id: string;
+      alias: string;
+      referrer: string | null;
+      userAgent: string | null;
+      isBot: boolean;
+    }> = [];
     const app = buildApp({
       auth: {
         repository: authRepository,
@@ -461,8 +467,9 @@ describe("workspace link lifecycle and redirects", () => {
         repository,
         authRepository,
         publicBaseUrl: "https://sho.rt",
-        onClickAccepted: ({ alias }) => {
-          acceptedEvents.push(alias);
+        onClickAccepted: (event) => {
+          acceptedEvents.push(event);
+          throw new Error("Redis unavailable");
         },
       },
       logger: false,
@@ -489,13 +496,27 @@ describe("workspace link lifecycle and redirects", () => {
 
     const responses = await Promise.all(
       Array.from({ length: 12 }, () =>
-        app.inject({ method: "GET", url: "/one-click" }),
+        app.inject({
+          method: "GET",
+          url: "/one-click",
+          headers: {
+            referer: "https://referrer.example/path?token=private",
+            "user-agent": "Googlebot/2.1",
+          },
+        }),
       ),
     );
     expect(responses.filter((response) => response.statusCode === 302)).toHaveLength(1);
     expect(responses.filter((response) => response.statusCode === 410)).toHaveLength(11);
     expect((await repository.findByAlias("one-click"))?.clickCount).toBe(1);
-    expect(acceptedEvents).toEqual(["one-click"]);
+    expect(acceptedEvents).toHaveLength(1);
+    expect(acceptedEvents[0]).toMatchObject({
+      alias: "one-click",
+      referrer: "https://referrer.example",
+      userAgent: "Googlebot/2.1",
+      isBot: true,
+    });
+    expect(acceptedEvents[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it("rejects unauthenticated link management", async () => {

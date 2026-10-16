@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type Redis from "ioredis";
 import { z } from "zod";
 import { authenticate, requireWorkspaceRole } from "../auth/routes.js";
 import type { AuthRepository } from "../auth/types.js";
+import { createClickEvent } from "../clicks/event.js";
+import type { ClickEventPayload } from "../clicks/types.js";
 import {
   AliasGenerationError,
   InvalidLinkInputError,
@@ -25,11 +28,7 @@ interface LinkRouteOptions {
   publicBaseUrl: string;
   redis?: Redis;
   generateAlias?: () => string;
-  onClickAccepted?: (event: {
-    linkId: string;
-    workspaceId: string;
-    alias: string;
-  }) => void | Promise<void>;
+  onClickAccepted?: (event: ClickEventPayload) => void | Promise<void>;
 }
 
 const workspaceParamsSchema = z.object({ workspaceId: z.string().min(1) });
@@ -326,15 +325,19 @@ export function registerLinkRoutes(
 
       if (options.onClickAccepted) {
         try {
-          await options.onClickAccepted({
+          await options.onClickAccepted(createClickEvent({
+            id: randomUUID(),
             linkId: accepted.id,
             workspaceId: accepted.workspaceId,
             alias: accepted.alias,
-          });
+            clickedAt: now,
+            referrer: request.headers.referer,
+            userAgent: request.headers["user-agent"],
+          }));
         } catch (error) {
           request.log.warn(
             { err: error, linkId: accepted.id },
-            "Accepted click could not be enqueued",
+            "Accepted click could not be enqueued; its analytics event may be lost",
           );
         }
       }
