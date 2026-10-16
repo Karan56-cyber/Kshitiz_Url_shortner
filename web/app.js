@@ -13,6 +13,9 @@ const authModeToggle = document.querySelector("#auth-mode-toggle");
 const guestStartButton = document.querySelector("#guest-start");
 const authTitle = document.querySelector("#auth-title");
 const authIntro = document.querySelector("#auth-intro");
+const demoNotice = document.querySelector("#demo-notice");
+const dashboardDemoNotice = document.querySelector("#dashboard-demo-notice");
+const guestRetention = document.querySelector(".guest-retention");
 const authSubmit = document.querySelector("#auth-submit");
 const authError = document.querySelector("#auth-error");
 const workspaceSelect = document.querySelector("#workspace-select");
@@ -32,6 +35,7 @@ const chartAxisLabels = document.querySelector("#chart-axis-labels");
 const dataWindow = document.querySelector("#data-window");
 
 let accessToken = sessionStorage.getItem("linkpulseAccessToken") ?? "";
+let demoMode = false;
 let isGuest = false;
 let guestExpiresAt = "";
 let currentWorkspaceId = "";
@@ -194,12 +198,17 @@ function updateWorkspaceOptions() {
     : selectedWorkspace()?.role.toLowerCase() ?? "";
   guestNotice.hidden = !isGuest;
   if (isGuest && guestExpiresAt) {
-    const expiry = new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(guestExpiresAt));
-    guestNotice.textContent =
-      `Guest mode: this workspace, links, and analytics will be deleted on ${expiry}.`;
+    if (demoMode) {
+      guestNotice.textContent =
+        "Demo mode: this workspace, links, and analytics reset when the server restarts.";
+    } else {
+      const expiry = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(guestExpiresAt));
+      guestNotice.textContent =
+        `Guest mode: this workspace, links, and analytics will be deleted on ${expiry}.`;
+    }
   }
   document.querySelector("#sign-out").textContent = isGuest
     ? "End guest session"
@@ -659,6 +668,21 @@ document.querySelector("#sign-out").addEventListener("click", () => {
 });
 
 async function initialize() {
+  try {
+    const status = await apiRequest("/health/live");
+    demoMode = status.demoMode === true;
+    demoNotice.hidden = !demoMode;
+    dashboardDemoNotice.hidden = !demoMode;
+    if (demoMode) {
+      guestRetention.textContent =
+        "Demo workspaces, links, and analytics reset when the server restarts.";
+    }
+  } catch {
+    setMessage(
+      authError,
+      "The LinkPulse API is not reachable. Start it with `npm run dev` and refresh this page.",
+    );
+  }
   if (!accessToken) {
     startLoginAnimation();
     return;

@@ -22,6 +22,7 @@ export interface AppOptions {
     jwtSecret: string;
     redis?: Redis;
   };
+  demoMode?: boolean;
   analytics?: {
     repository: AnalyticsRepository;
     authRepository: AuthRepository;
@@ -74,7 +75,10 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     registerAnalyticsRoutes(app, options.analytics);
   }
 
-  app.get("/health/live", async () => ({ status: "ok" }));
+  app.get("/health/live", async () => ({
+    status: "ok",
+    ...(options.demoMode ? { demoMode: true } : {}),
+  }));
 
   app.get("/health/ready", async (_request, reply) => {
     if (!database) {
