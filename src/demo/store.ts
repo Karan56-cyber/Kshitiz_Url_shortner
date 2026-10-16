@@ -155,7 +155,10 @@ export class DemoStore
   ): Promise<LinkRecord | null> {
     const link = await this.findLink(workspaceId, linkId);
     if (!link) return null;
-    const updated = { ...link, ...input, updatedAt: new Date() };
+    const changes = Object.fromEntries(
+      Object.entries(input).filter(([, value]) => value !== undefined),
+    );
+    const updated = { ...link, ...changes, updatedAt: new Date() };
     this.links.set(linkId, updated);
     return updated;
   }

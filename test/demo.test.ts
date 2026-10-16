@@ -34,6 +34,40 @@ describe("local demo mode", () => {
     return app;
   }
 
+  it("ignores undefined fields when updating a link", async () => {
+    const store = new DemoStore();
+    const link = await store.createLink({
+      workspaceId: "workspace",
+      createdById: "user",
+      campaignId: "campaign",
+      alias: "demo-link",
+      destinationUrl: "https://example.com/original",
+      expiresAt: null,
+      maxClicks: 10,
+      passwordHash: null,
+    });
+
+    const updated = await Reflect.apply(store.updateLink, store, [
+      link.workspaceId,
+      link.id,
+      {
+        campaignId: undefined,
+        destinationUrl: undefined,
+        expiresAt: undefined,
+        maxClicks: undefined,
+        passwordHash: undefined,
+      },
+    ]);
+
+    expect(updated).toMatchObject({
+      campaignId: "campaign",
+      destinationUrl: "https://example.com/original",
+      expiresAt: null,
+      maxClicks: 10,
+      passwordHash: null,
+    });
+  });
+
   it("supports guest short-link creation, redirect tracking, and persisted-style analytics", async () => {
     const app = createDemoApp();
     const health = await app.inject({ method: "GET", url: "/health/live" });
