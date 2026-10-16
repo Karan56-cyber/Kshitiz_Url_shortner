@@ -100,12 +100,15 @@ model ClickEvent {
   clickedAt   DateTime @default(now())
   referrer    String?  @db.Text
   userAgent   String?  @db.Text
+  deviceType  String   @default("UNKNOWN") @db.VarChar(16)
+  browser     String   @default("UNKNOWN") @db.VarChar(16)
   ipHash      String?
   countryCode String?  @db.Char(2)
   isBot       Boolean  @default(false)
   link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   @@index([linkId, clickedAt])
+  @@index([linkId, isBot, clickedAt])
   @@index([clickedAt])
   @@map("click_events")
 }

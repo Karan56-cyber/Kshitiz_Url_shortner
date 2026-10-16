@@ -1,6 +1,8 @@
 import Redis from "ioredis";
 import { buildApp } from "./app.js";
 import { PrismaAuthRepository } from "./auth/prisma-repository.js";
+import { PrismaClickRepository } from "./clicks/prisma-repository.js";
+import { enqueueClickEvent } from "./clicks/queue.js";
 import { PrismaLinkRepository } from "./links/prisma-repository.js";
 import { loadEnvironment } from "./config/env.js";
 import { createPrismaClient } from "./lib/prisma.js";
@@ -13,6 +15,7 @@ async function start(): Promise<void> {
     maxRetriesPerRequest: 2,
   });
   const authRepository = new PrismaAuthRepository(prisma);
+  const clickRepository = new PrismaClickRepository(prisma);
   const app = buildApp({
     database: {
       checkConnection: async () => {
@@ -25,11 +28,16 @@ async function start(): Promise<void> {
       jwtSecret: environment.JWT_SECRET,
       redis,
     },
+    analytics: {
+      repository: clickRepository,
+      authRepository,
+    },
     links: {
       repository: new PrismaLinkRepository(prisma),
       authRepository,
       publicBaseUrl: environment.PUBLIC_BASE_URL,
       redis,
+      onClickAccepted: (event) => enqueueClickEvent(redis, event),
     },
   });
 

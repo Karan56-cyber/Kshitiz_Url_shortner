@@ -8,6 +8,7 @@ const environmentSchema = z.object({
   JWT_SECRET: z.string().min(32),
   REDIS_URL: z.string().url(),
   PUBLIC_BASE_URL: z.string().url(),
+  CLICK_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

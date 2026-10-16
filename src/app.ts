@@ -3,6 +3,11 @@ import helmet from "@fastify/helmet";
 import type Redis from "ioredis";
 import { registerAuthentication } from "./auth/routes.js";
 import type { AuthRepository } from "./auth/types.js";
+import { registerAnalyticsRoutes } from "./clicks/routes.js";
+import type {
+  AnalyticsRepository,
+  ClickEventPayload,
+} from "./clicks/types.js";
 import { registerLinkRoutes } from "./links/routes.js";
 import type { LinkRepository } from "./links/types.js";
 
@@ -16,17 +21,17 @@ export interface AppOptions {
     jwtSecret: string;
     redis?: Redis;
   };
+  analytics?: {
+    repository: AnalyticsRepository;
+    authRepository: AuthRepository;
+  };
   links?: {
     repository: LinkRepository;
     authRepository: AuthRepository;
     publicBaseUrl: string;
     redis?: Redis;
     generateAlias?: () => string;
-    onClickAccepted?: (event: {
-      linkId: string;
-      workspaceId: string;
-      alias: string;
-    }) => void | Promise<void>;
+    onClickAccepted?: (event: ClickEventPayload) => void | Promise<void>;
   };
   logger?: boolean;
 }
@@ -53,6 +58,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   }
   if (options.links) {
     registerLinkRoutes(app, options.links);
+  }
+  if (options.analytics) {
+    registerAnalyticsRoutes(app, options.analytics);
   }
 
   app.get("/health/live", async () => ({ status: "ok" }));
