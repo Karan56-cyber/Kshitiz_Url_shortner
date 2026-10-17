@@ -447,7 +447,11 @@ describe("authentication and workspace access", () => {
     const { app } = createApp();
     const responses = [];
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      responses.push(await app.inject({ method: "POST", url: "/auth/guest" }));
+      responses.push(await app.inject({
+        method: "POST",
+        url: "/auth/guest",
+        headers: { "x-vercel-forwarded-for": "203.0.113.10" },
+      }));
     }
     expect(responses.slice(0, 3).map(({ statusCode }) => statusCode)).toEqual([
       201,
@@ -455,6 +459,13 @@ describe("authentication and workspace access", () => {
       201,
     ]);
     expect(responses[3].statusCode).toBe(429);
+
+    const otherClient = await app.inject({
+      method: "POST",
+      url: "/auth/guest",
+      headers: { "x-vercel-forwarded-for": "203.0.113.11" },
+    });
+    expect(otherClient.statusCode).toBe(201);
   });
 
   it("validates registration payloads and requires authentication for workspace access", async () => {

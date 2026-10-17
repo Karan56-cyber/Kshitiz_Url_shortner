@@ -1,5 +1,6 @@
 import { fastifyJwt } from "@fastify/jwt";
-import rateLimit from "@fastify/rate-limit";
+import rateLimit, { normalizeIP } from "@fastify/rate-limit";
+import { isIP } from "node:net";
 import { createHash, randomBytes } from "node:crypto";
 import type {
   FastifyInstance,
@@ -166,6 +167,14 @@ export function registerAuthentication(
       global: false,
       max: 5,
       timeWindow: "1 minute",
+      keyGenerator: (request) => {
+        const vercelForwardedFor = request.headers["x-vercel-forwarded-for"];
+        const clientIp =
+          typeof vercelForwardedFor === "string"
+            ? vercelForwardedFor.trim()
+            : "";
+        return normalizeIP(isIP(clientIp) ? clientIp : request.ip);
+      },
       ...(options.redis ? { redis: options.redis } : {}),
     });
 
