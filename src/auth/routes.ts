@@ -323,7 +323,7 @@ export function registerAuthentication(
 
     authApp.post(
       "/auth/guest",
-      { config: { rateLimit: { max: 3, timeWindow: "1 hour" } } },
+      { config: { rateLimit: { max: 30, timeWindow: "1 hour" } } },
       async (_request, reply) => {
         const retentionDays = 7;
         const guestExpiresAt = new Date(

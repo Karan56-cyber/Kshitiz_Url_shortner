@@ -446,19 +446,16 @@ describe("authentication and workspace access", () => {
   it("rate-limits guest workspace creation", async () => {
     const { app } = createApp();
     const responses = [];
-    for (let attempt = 0; attempt < 4; attempt += 1) {
+    for (let attempt = 0; attempt < 31; attempt += 1) {
       responses.push(await app.inject({
         method: "POST",
         url: "/auth/guest",
         headers: { "x-vercel-forwarded-for": "203.0.113.10" },
       }));
     }
-    expect(responses.slice(0, 3).map(({ statusCode }) => statusCode)).toEqual([
-      201,
-      201,
-      201,
-    ]);
-    expect(responses[3].statusCode).toBe(429);
+    expect(responses.slice(0, 30).every(({ statusCode }) => statusCode === 201))
+      .toBe(true);
+    expect(responses[30].statusCode).toBe(429);
 
     const otherClient = await app.inject({
       method: "POST",
