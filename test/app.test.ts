@@ -38,6 +38,7 @@ describe("health endpoints", () => {
     expect(page.statusCode).toBe(200);
     expect(page.headers["content-type"]).toContain("text/html");
     expect(page.body).toContain('id="auth-view"');
+    expect(page.body).toMatch(/id="auth-password"[\s\S]*?minlength="1"/);
     expect(page.body).toContain('id="forgot-password"');
     expect(page.body).toContain('id="reset-password-confirm"');
     expect(page.body).toContain('id="created-link-result"');

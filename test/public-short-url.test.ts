@@ -52,4 +52,13 @@ describe("public short link URLs", () => {
       }),
     ).toBeNull();
   });
+
+  it("formats the shortest supported alias", () => {
+    expect(
+      publicShortUrl("ets", {
+        hostname: "short.remindkro.in",
+        origin: "https://short.remindkro.in",
+      }),
+    ).toBe("https://short.remindkro.in/ets");
+  });
 });

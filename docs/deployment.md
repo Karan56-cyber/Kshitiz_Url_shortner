@@ -30,9 +30,9 @@ Render API can run the click worker in-process for a single-service deployment.
 2. Keep the repository root as the project root. `vercel.json` installs dependencies,
    builds the browser bundle and local Rive WASM asset, and publishes `public/`.
 3. Add `short.remindkro.in` as a Vercel domain and configure its DNS records as
-   instructed by Vercel. The Vercel rewrites proxy API and short-link requests to
-   `https://linkpulse-api-0w93.onrender.com`; the Render URL is an internal service
-   origin and must not be used as the public short-link base.
+   instructed by Vercel. The Vercel rewrites proxy API and 3–64 character short-link
+   aliases to `https://linkpulse-api-0w93.onrender.com`; the Render URL is an
+   internal service origin and must not be used as the public short-link base.
 
 ## Verify deployment
 

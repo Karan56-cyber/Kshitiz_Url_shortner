@@ -115,6 +115,7 @@ function setAuthMode(mode) {
   document.querySelector("#privacy-note").hidden = recovering;
   passwordRequirement.hidden = !registering && !resettingPassword;
   authPasswordLabel.textContent = resettingPassword ? "New password" : "Password";
+  authPassword.minLength = registering || resettingPassword ? 12 : 1;
   authPassword.setAttribute(
     "autocomplete",
     registering || resettingPassword ? "new-password" : "current-password",
