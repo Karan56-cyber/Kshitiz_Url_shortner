@@ -21,6 +21,10 @@ backend-first MVP using Fastify, TypeScript, PostgreSQL, Prisma, and Redis.
 See [docs/architecture.md](docs/architecture.md) for component responsibilities,
 data relationships, and the staged delivery plan.
 
+## Images
+<img width="1470" height="829" alt="Screenshot 2026-10-18 at 9 17 41 PM" src="https://github.com/user-attachments/assets/bba65495-ae13-4c67-8bd5-e51216580796" />
+<img width="1456" height="842" alt="Screenshot 2026-10-18 at 9 16 54 PM" src="https://github.com/user-attachments/assets/b81bfc72-1980-42ef-ab8d-63407dafd8fb" />
+
 ## Local development
 
 Requirements: Node.js 22+ and npm. Docker Compose is only needed for persistent
