@@ -6,6 +6,7 @@ import {
   RuntimeLoader,
 } from "@rive-app/canvas";
 import { publicShortUrl } from "./public-short-url.js";
+import { retryApiHealthCheck } from "./api-health.js";
 
 const authView = document.querySelector("#auth-view");
 const dashboardView = document.querySelector("#dashboard-view");
@@ -68,6 +69,16 @@ function setMessage(element, message = "", success = false) {
   element.textContent = message;
   element.hidden = message.length === 0;
   element.classList.toggle("is-success", success);
+}
+
+function apiUnavailableMessage(error) {
+  if (error.status === 429) {
+    return "The LinkPulse API is temporarily rate-limiting requests. Wait a moment, then refresh.";
+  }
+  if (error.status >= 400 && error.status < 500) {
+    return `The LinkPulse API returned HTTP ${error.status}. Refresh the page; if this continues, contact the site administrator.`;
+  }
+  return "The LinkPulse API is taking longer than expected to respond. It may be waking up after inactivity. Wait a minute and refresh; if this continues, check https://short.remindkro.in/health/live.";
 }
 
 function setAuthMode(mode) {
@@ -866,7 +877,7 @@ document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
 async function initialize() {
   if (passwordResetToken) setAuthMode("reset");
   try {
-    const status = await apiRequest("/health/live");
+    const status = await retryApiHealthCheck(() => apiRequest("/health/live"));
     demoMode = status.demoMode === true;
     demoNotice.hidden = !demoMode;
     dashboardDemoNotice.hidden = !demoMode;
@@ -874,11 +885,8 @@ async function initialize() {
       guestRetention.textContent =
         "Demo workspaces, links, and analytics reset when the server restarts.";
     }
-  } catch {
-    setMessage(
-      authError,
-      "The LinkPulse API is not reachable. Start it with `npm run dev` and refresh this page.",
-    );
+  } catch (error) {
+    setMessage(authError, apiUnavailableMessage(error));
   }
   if (passwordResetToken || !accessToken) {
     startLoginAnimation();

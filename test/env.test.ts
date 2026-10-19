@@ -45,6 +45,20 @@ describe("environment loading", () => {
     expect(environment.DEMO_MODE).toBe(false);
   });
 
+  it("accepts an Upstash Redis TLS connection URL for production", () => {
+    const environment = loadEnvironment({
+      ...baseEnvironment,
+      NODE_ENV: "production",
+      DEMO_MODE: "false",
+      DATABASE_URL: "postgresql://localhost:5432/linkpulse",
+      REDIS_URL: "rediss://default:test-password@redis.example.com:6379",
+      PUBLIC_BASE_URL: "https://short.example.com",
+    });
+    expect(environment.REDIS_URL).toBe(
+      "rediss://default:test-password@redis.example.com:6379",
+    );
+  });
+
   it("keeps the embedded worker opt-in and accepts Render's true value", () => {
     const demoEnvironment = loadEnvironment({
       ...baseEnvironment,
