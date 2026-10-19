@@ -7,14 +7,19 @@ Render API can run the click worker in-process for a single-service deployment.
 
 ## Configure the Render service
 
-1. Create a Render web service from the `pantkartik-linkpulse-dashboard` branch and
-   use the settings in `render.yaml`. Review the selected plan and region before
-   creating the service.
-2. Set `DATABASE_URL` and `REDIS_URL` to your managed PostgreSQL and Redis
-   connection URLs. Set `PUBLIC_BASE_URL` to `https://short.remindkro.in`; this is
-   the public short-link domain, not the Render API origin. Render generates
-   `JWT_SECRET`; `EMBEDDED_WORKER=true` enables click processing and guest cleanup
-   in the API process.
+1. Create a Render web service from the `main` branch and use the settings in
+   `render.yaml`. The API is configured for Render's lowest paid web-service plan
+   (`0.5c-512mb`) so it does not spin down while idle. Paid service usage incurs
+   Render charges; confirm current pricing in Render before applying the Blueprint.
+   Sync the Blueprint after changing `render.yaml` to apply the plan to an existing
+   service, or select the same paid plan in the Render Dashboard.
+2. Set `DATABASE_URL` to your managed PostgreSQL connection URL and `REDIS_URL` to
+   the Upstash Redis TCP/TLS connection string (`rediss://default:<password>@<endpoint>:6379`).
+   Find it in the Upstash database's connection details. The REST URL/token are not
+   compatible with this app's Redis Streams worker; do not use them as `REDIS_URL`.
+   Set `PUBLIC_BASE_URL` to `https://short.remindkro.in`; this is the public short-link
+   domain, not the Render API origin. Render generates `JWT_SECRET`;
+   `EMBEDDED_WORKER=true` enables click processing and guest cleanup in the API process.
 3. To enable password recovery, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
    `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in Render's environment. Without these
    settings, normal sign-in continues to work but password-reset requests return a
@@ -25,8 +30,7 @@ Render API can run the click worker in-process for a single-service deployment.
 
 ## Deploy the Vercel frontend
 
-1. Import the GitHub repository into Vercel and select the
-   `pantkartik-linkpulse-dashboard` branch.
+1. Import the GitHub repository into Vercel and select the `main` branch.
 2. Keep the repository root as the project root. `vercel.json` installs dependencies,
    builds the browser bundle and local Rive WASM asset, and publishes `public/`.
 3. Add `short.remindkro.in` as a Vercel domain and configure its DNS records as
@@ -44,6 +48,9 @@ Render API can run the click worker in-process for a single-service deployment.
   a private window; it should redirect through the Vercel rewrite to the Render API.
 - Visit `/health/live` and `/health/ready` on the Render service; readiness checks
   PostgreSQL and Redis.
+- The login page retries temporary API startup failures. If the API still does not
+  respond, check `https://short.remindkro.in/health/live` and the Render service logs.
+  A 200 response from the health endpoint confirms the API is running.
 - Confirm the embedded click worker is running and monitor API logs and the
   `linkpulse:click-events:dead` stream.
 

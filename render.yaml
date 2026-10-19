@@ -3,7 +3,7 @@ services:
   - type: web
     name: linkpulse-api
     runtime: node
-    plan: free
+    plan: 0.5c-512mb
     region: singapore
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run db:deploy && node dist/server.js
@@ -17,6 +17,7 @@ services:
         value: 10000
       - key: DATABASE_URL
         sync: false
+      # Upstash TCP/TLS connection URL, not the REST URL/token.
       - key: REDIS_URL
         sync: false
       - key: JWT_SECRET
