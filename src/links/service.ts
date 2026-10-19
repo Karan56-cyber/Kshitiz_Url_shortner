@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import {
   DuplicateAliasError,
@@ -10,6 +10,8 @@ import {
 import { isValidAlias, validateDestinationUrl } from "./validation.js";
 
 const GENERATED_ALIAS_ATTEMPTS = 5;
+const CUSTOM_ALIAS_SUFFIX_LENGTH = 6;
+const CUSTOM_ALIAS_SEPARATOR_LENGTH = 1;
 
 export interface LinkServiceOptions {
   repository: LinkRepository;
@@ -43,9 +45,14 @@ export class LinkService {
       ? await hashPassword(input.password)
       : null;
 
-    const attempts = input.alias === undefined ? GENERATED_ALIAS_ATTEMPTS : 1;
+    const attempts =
+      input.alias === undefined ? GENERATED_ALIAS_ATTEMPTS : GENERATED_ALIAS_ATTEMPTS + 1;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      const alias = input.alias ?? this.generateAlias();
+      const alias = input.alias === undefined
+        ? this.generateAlias()
+        : attempt === 0
+          ? input.alias
+          : this.suffixedAlias(input.alias);
       if (!isValidAlias(alias)) {
         throw new InvalidLinkInputError("Generated alias format is invalid");
       }
@@ -62,10 +69,16 @@ export class LinkService {
         });
       } catch (error) {
         if (!(error instanceof DuplicateAliasError)) throw error;
-        if (input.alias !== undefined) throw error;
       }
     }
     throw new AliasGenerationError();
+  }
+
+  private suffixedAlias(alias: string): string {
+    const maxBaseLength =
+      64 - CUSTOM_ALIAS_SEPARATOR_LENGTH - CUSTOM_ALIAS_SUFFIX_LENGTH;
+    const suffix = randomInt(100_000, 1_000_000);
+    return `${alias.slice(0, maxBaseLength)}-${suffix}`;
   }
 
   async updateLink(

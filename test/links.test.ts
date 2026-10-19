@@ -324,11 +324,27 @@ describe("workspace link lifecycle and redirects", () => {
     expect(await repository.listLinks("workspace-2", 100)).toHaveLength(1);
   });
 
-  it("handles duplicate aliases as conflicts and retries generated aliases", async () => {
+  it("adds a unique numeric suffix to duplicate custom aliases and retries generated aliases", async () => {
     const { app, repository, base, headers } = await setup();
-    await createLink(app, base, headers);
+    const original = await createLink(app, base, headers);
     const duplicate = await createLink(app, base, headers);
-    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.statusCode).toBe(201);
+    expect(duplicate.json().alias).toMatch(/^my-link-\d{6}$/);
+    expect(duplicate.json().alias).not.toBe(original.json().alias);
+    expect(await repository.findByAlias(duplicate.json().alias)).not.toBeNull();
+
+    const longAlias = "a".repeat(64);
+    await createLink(app, base, headers, {
+      alias: longAlias,
+      destinationUrl: "https://example.com/long-alias",
+    });
+    const duplicateLongAlias = await createLink(app, base, headers, {
+      alias: longAlias,
+      destinationUrl: "https://example.com/duplicate-long-alias",
+    });
+    expect(duplicateLongAlias.statusCode).toBe(201);
+    expect(duplicateLongAlias.json().alias).toMatch(/^a{57}-\d{6}$/);
+    expect(duplicateLongAlias.json().alias).toHaveLength(64);
 
     await repository.createLink({
       workspaceId: "other-workspace",
